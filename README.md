@@ -1,3 +1,46 @@
+# 🌾 충남온
+
+충청남도 외국인 일용직 근로자를 위한 구인·구직 및 생활 지원 플랫폼
+
+## 주요 기능
+
+- **일용직 구인·구직:** 근무 날짜·일당·시간·지역 정보, 신청/승인 관리, 사업주 평판(온도)
+- **일자리 지도:** 현재 위치 기반 주변 일자리 탐색, 지역·업종 필터
+- **AI 행정·생활 지원:** 비자·건강보험·근로 정보 안내, AI 챗봇, 서류 작성 도움
+- **외국인 근로자 커뮤니티:** 지역별 커뮤니티, 동행 모집, 후기·생활 정보 공유
+- **다국어 번역:** 게시글 자동 번역, 채팅 번역, 현장 필수 표현
+
+## 기술 스택
+
+| 영역 | 스택 |
+| --- | --- |
+| Frontend | React |
+| Backend | Django, Django REST Framework, JWT (SimpleJWT) |
+| API 문서 | drf-spectacular + Scalar |
+| DB | SQLite (로컬) / PostgreSQL (배포) |
+
+## 프로젝트 구조
+
+```text
+Chungnam-On/
+├── backend/     # Django REST API  (자세한 내용: backend/README.md)
+├── frontend/    # React (예정)
+└── .github/     # 이슈/PR 템플릿, 기여 가이드
+```
+
+## 백엔드 빠른 시작
+
+```bash
+cd backend
+python3.13 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py runserver
+```
+
+- API 문서 (Scalar): http://127.0.0.1:8000/docs
+- 헬스체크: http://127.0.0.1:8000/api/health/
 
 ## 🌿 Git 브랜치 전략
 
