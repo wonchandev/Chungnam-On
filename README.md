@@ -24,7 +24,7 @@
 ```text
 Chungnam-On/
 ├── backend/     # Django REST API  (자세한 내용: backend/README.md)
-├── frontend/    # React (예정)
+├── frontend/    # React + Vite (자세한 내용: frontend/README.md)
 └── .github/     # 이슈/PR 템플릿, 기여 가이드
 ```
 
