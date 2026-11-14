@@ -32,18 +32,63 @@ python manage.py runserver
 | `CORS_ALLOWED_ORIGINS` | React 개발 서버 주소 (쉼표 구분) | 빈 값 |
 | `DATABASE_URL` | 예: `postgres://user:pw@localhost:5432/db` | SQLite |
 | `JWT_ACCESS_MINUTES` / `JWT_REFRESH_DAYS` | 토큰 만료 | 30분 / 7일 |
+| `REDIS_URL` | 채팅 채널 레이어·캐시(온라인 상태) 공유용. **운영 필수**, 로컬은 비워도 됨 | 메모리 |
+| `GOOGLE_TRANSLATE_API_KEY` | Google Cloud Translation API 키. 없으면 개발용 echo 번역(`[th] 원문`) | 빈 값 |
+| `ANTHROPIC_API_KEY` / `ASSISTANT_MODEL` | AI 챗봇(Claude). 키가 없으면 행정 가이드 검색 기반 간이 답변 | 빈 값 / `claude-opus-5-5` |
+| `EMAIL_BACKEND` | 인증번호·비밀번호 재설정 메일 (기본 콘솔 출력) | console |
+| `TRANSLATION_BACKEND` | (선택) 번역 엔진 클래스 경로. 키가 있으면 자동으로 `GoogleTranslator` | 자동 |
 
-## 인증 (JWT)
+## API 개요
 
-| Method | Endpoint | 설명 |
-| --- | --- | --- |
-| POST | `/api/auth/register/` | 회원가입 (`role`: worker / employer) |
-| POST | `/api/auth/login/` | 로그인 → `access`, `refresh` 발급 |
-| POST | `/api/auth/refresh/` | access 토큰 재발급 (refresh 는 회전됨) |
-| GET/PATCH | `/api/auth/me/` | 내 정보 조회/수정 |
+전체 목록·요청/응답 스키마는 **/docs (Scalar)** 에서 확인하세요. 인증이 필요한 API 는 `Authorization: Bearer <access>`.
+기본 권한은 `IsAuthenticatedOrReadOnly`, 뷰별로 사업주/근로자 권한을 따로 지정합니다.
+에러 응답은 항상 `{"code": "...", "message": "...", "detail": ...}` 형식입니다.
+언어는 `Accept-Language` 헤더 → 로그인 사용자의 `preferred_language` → `ko` 순서로 결정됩니다.
 
-인증이 필요한 API 는 헤더에 `Authorization: Bearer <access>` 를 보냅니다.
-기본 권한은 `IsAuthenticatedOrReadOnly` (조회는 공개, 쓰기는 로그인 필요) 이며, 필요 시 뷰별로 `permission_classes` 를 지정합니다.
+| 영역 | 엔드포인트 |
+| --- | --- |
+| 인증 | `POST /api/auth/register/ login/ refresh/ logout/ withdraw/` · `PATCH /api/auth/password/` · `GET/PATCH /api/auth/me/` · `POST /api/auth/verify/request/ verify/confirm/`(이메일·전화 인증) · `POST /api/auth/password-reset/request/ confirm/` · `POST /api/auth/social/{kakao\|google}/` |
+| 마이 | `GET /api/me/summary/` · `GET/PUT /api/me/worker-profile/`(이력) · 설정은 `PATCH /api/auth/me/` (`preferred_language`, `notifications_enabled`) |
+| 공고 | `GET/POST /api/jobs/` · `GET/PATCH/DELETE /api/jobs/{id}/` · `POST /api/jobs/{id}/close/ duplicate/` · `GET /api/jobs/mine/ urgent/ popular-categories/ recommended/ ticker/ recent/ popular-searches/` · `GET /api/categories/` |
+| 지원 | `POST /api/jobs/{id}/apply/`(문의 채팅방 자동 생성) · `GET /api/applications/mine/` · `DELETE /api/applications/{id}/` · `GET /api/jobs/{id}/applications/` · `PATCH /api/applications/{id}/`(승인/거절) · `POST /api/applications/{id}/check-in/ complete/` |
+| 관심·인력사무소 | `POST/DELETE /api/jobs/{id}/bookmark/` · `GET /api/jobs/bookmarks/` · `GET /api/agencies/ agencies/{id}/` |
+| 평판 | `POST /api/jobs/{id}/reviews/`(근무 완료 후) · `GET /api/users/{id}/reputation/` |
+| 지도 | `GET /api/jobs/map/` · `/api/jobs/map/clusters/` · `/api/jobs/nearby/` · `GET /api/jobs/?bbox=` · `GET /api/regions/ regions/search/` |
+| 채팅 | `GET/POST /api/chat/rooms/` · `GET/DELETE /api/chat/rooms/{id}/` · `GET/POST .../messages/`(이미지 첨부) · `POST .../read/` · `PATCH .../translation/` · `GET .../call/` · `GET /api/chat/quick-replies/` |
+| 번역·언어 | `POST /api/translate/text/ voice/ image/` · `GET /api/languages/ phrases/` · `GET /api/courses/ courses/mine/` · `POST/DELETE /api/courses/{id}/enroll/` |
+| 행정관리 | `GET /api/admin-info/dashboard/ guides/ guides/{id}/ frequent/ popular/` · `GET/POST /api/admin-info/complaints/` |
+| AI 지원 | `POST /api/assistant/chat/`(SSE 스트리밍 지원) · `GET /api/assistant/conversations/` · `GET /api/assistant/documents/templates/` · `POST /api/assistant/documents/` |
+| 커뮤니티 | `GET/POST /api/community/posts/` · `.../posts/{id}/ like/ comments/` · `DELETE /api/community/comments/{id}/` · `GET/POST /api/community/companions/` · `.../companions/{id}/ join/ participants/` |
+| 알림·안전 | `GET /api/notifications/ unread-count/` · `POST /api/notifications/read-all/ {id}/read/` · `POST /api/reports/` · `GET /api/blocks/` · `POST/DELETE /api/blocks/{user_id}/` |
+
+공고 목록·지도·주변검색은 같은 필터를 씁니다:
+`q, region, category, bbox, pay_type, min_pay, max_pay, period(one_day|short|mid|long), weekday, work_date, urgent, beginner_ok, with_friend, lunch_provided, local_preferred, night_shift, ordering(created_at|pay_amount|deadline|start_date)`
+
+### WebSocket 채팅
+
+`ws://<host>/ws/chat/<room_id>/?token=<access>` (브라우저는 헤더를 못 붙이므로 쿼리로 JWT 전달)
+
+- 보내기: `{"type":"message","text":"..."}` · `{"type":"read"}`
+- 받기: `{"type":"message","message":{id,text,source_lang,translations{언어:번역문},...}}` · `{"type":"read",...}` · `{"type":"presence","user":id,"online":bool}`
+- 방 생성은 REST(`POST /api/chat/rooms/`, 공고 문의 시 `job_id`), 이력은 REST 커서 페이지네이션.
+
+### 번역 (Google Cloud Translation)
+
+1. GCP 콘솔에서 **Cloud Translation API** 를 사용 설정하고 API 키를 발급합니다 (키는 해당 API 로만 제한 권장).
+2. `.env` 에 `GOOGLE_TRANSLATE_API_KEY=...` 를 넣으면 공고 자동 번역, 채팅 번역, `/api/translate/text/` 가 모두 구글 번역을 사용합니다.
+3. 같은 원문·언어쌍은 DB(`TranslationCache`)에 저장해 API 를 다시 호출하지 않습니다 (비용 절감). 번역 실패 시에도 공고 등록/메시지 전송은 성공하고 해당 언어 번역만 비어 있습니다.
+4. 서비스 언어 코드 중 `zh` 는 구글의 `zh-CN` 으로 변환됩니다 (`GoogleTranslator.CODE_MAP`). 지원 언어는 `settings.SUPPORTED_LANGUAGES`.
+5. 개발·테스트에서는 키 없이도 동작하며, 테스트는 외부 호출 없이 mock 으로 검증합니다.
+
+### AI 챗봇 / 음성·사진 번역
+
+- 챗봇: `.env` 에 `ANTHROPIC_API_KEY` 를 넣으면 Claude 가 행정 가이드(관리자 페이지에서 등록)를 근거로 답합니다. 키가 없으면 가이드 검색 결과를 요약해 보여주는 간이 모드로 동작합니다. 모델은 `ASSISTANT_MODEL` 로 변경할 수 있습니다.
+- 음성/사진 번역은 번역과 같은 `GOOGLE_TRANSLATE_API_KEY` 를 쓰며, GCP 에서 **Speech-to-Text API**, **Cloud Vision API** 도 사용 설정해야 합니다.
+- 이메일 인증/비밀번호 재설정 메일은 기본적으로 콘솔에 출력됩니다. `DEBUG=True` 일 때는 응답에 `dev_code` 가 포함되어 프론트 개발 시 메일 없이 테스트할 수 있습니다. SMS 는 미연동(로그만).
+
+### 정기 작업
+
+마감일/근무일이 지난 공고 자동 마감: `python manage.py close_expired_jobs` 를 cron 등으로 하루 1회 이상 실행.
 
 ## 구조
 
@@ -51,11 +96,13 @@ python manage.py runserver
 backend/
 ├── config/            # settings, urls, Scalar 문서 템플릿
 └── apps/
-    ├── accounts/      # 회원(근로자/사업주), JWT 인증, 평판
-    ├── jobs/          # 일용직 구인·구직, 신청/승인, 일자리 지도
-    ├── community/     # 지역 커뮤니티, 동행 모집, 후기
-    ├── assistant/     # AI 행정·생활 지원 챗봇
-    └── translation/   # 다국어 번역, 채팅 번역
+    ├── core/          # 공통: 지역(Region), 에러 포맷, 언어 결정, 알림·신고·차단
+    ├── accounts/      # 회원(근로자/사업주·Company), JWT 인증, 평판(온도)
+    ├── jobs/          # 공고, 지원/승인, 관심, 후기, 지도(마커·클러스터·주변)
+    ├── chat/          # 채팅방/메시지, WebSocket, 메시지 자동 번역
+    ├── translation/   # 번역 서비스(엔진 어댑터 + DB 캐시), 번역 API
+    ├── assistant/     # 행정관리(대시보드·가이드·민원), AI 챗봇(RAG), 서류 초안
+    └── community/     # 지역 커뮤니티(글·댓글·좋아요), 동행 모집
 ```
 
 ## 협업 규칙
@@ -66,5 +113,7 @@ backend/
 - 패키지 추가 시 `pip freeze > requirements.txt` 로 갱신 후 커밋합니다.
 - `.env` 는 커밋하지 않습니다 (`.env.example` 만 관리).
 - 사용자 모델은 `accounts.User` (`AUTH_USER_MODEL`) 를 사용합니다.
-- 테스트: `python manage.py test` (PR 전에 통과 확인)
+- 테스트: `python manage.py test` (PR 전에 통과 확인). 공용 헬퍼는 `apps/core/testing.py`.
+- 지역(시군)·업종은 마이그레이션으로 시드되므로 `migrate` 만 하면 준비됩니다.
+- 진행 현황/설계 메모: [docs/API_TODO.md](docs/API_TODO.md)
 - 브랜치/커밋/PR 규칙은 루트 [README](../README.md) 와 [CONTRIBUTING](../.github/CONTRIBUTING.md) 참고.
