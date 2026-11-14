@@ -18,6 +18,7 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
 INSTALLED_APPS = [
+    "daphne",  # runserver 를 ASGI(WebSocket 지원)로 실행
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -29,7 +30,12 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework_simplejwt",
     "drf_spectacular",
+    "django_filters",
+    "channels",
+    "rest_framework_simplejwt.token_blacklist",
     # local apps
+    "apps.core",
+    "apps.chat",
     "apps.accounts",
     "apps.jobs",
     "apps.community",
@@ -68,6 +74,25 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+# Redis 가 있으면(REDIS_URL) 채널 레이어/캐시를 Redis 로, 없으면 메모리(로컬 개발용)
+REDIS_URL = env("REDIS_URL", default="")
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [REDIS_URL]},
+        }
+    }
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
+else:
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 # DB: 기본은 SQLite(로컬), DATABASE_URL 이 있으면 PostgreSQL 등으로 전환
 DATABASES = {
     "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
@@ -89,7 +114,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -106,8 +131,35 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     "PAGE_SIZE": 20,
 }
+
+# 다국어: 서비스가 지원하는 언어 (UI/번역 대상). 기준 언어는 ko.
+SUPPORTED_LANGUAGES = ["ko", "en", "vi", "th", "zh", "uz", "km", "ne", "id", "mn"]
+DEFAULT_LANGUAGE = "ko"
+
+# 번역 엔진 (apps/translation/backends.py): Google Cloud Translation.
+# API 키가 없으면 개발용 EchoTranslator('[언어] 원문')로 동작합니다.
+GOOGLE_TRANSLATE_API_KEY = env("GOOGLE_TRANSLATE_API_KEY", default="")
+TRANSLATION_BACKEND = env(
+    "TRANSLATION_BACKEND",
+    default="apps.translation.backends.GoogleTranslator"
+    if GOOGLE_TRANSLATE_API_KEY
+    else "apps.translation.backends.EchoTranslator",
+)
+
+# AI 행정·생활 챗봇 (Claude). 키가 없으면 행정 가이드 검색 기반 간이 답변으로 동작.
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+ASSISTANT_MODEL = env("ASSISTANT_MODEL", default="claude-opus-5-5")
+
+# 이메일(인증번호/비밀번호 재설정): 기본은 콘솔 출력(개발용)
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@chungnamon.local")
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_MINUTES", default=30)),
@@ -122,4 +174,14 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "ApplicationStatusEnum": "apps.jobs.models.Application.Status",
+        "JobStatusEnum": "apps.jobs.models.JobPost.Status",
+        "PayTypeEnum": "apps.jobs.models.JobPost.PayType",
+        "LanguageEnum": "apps.translation.serializers.LANGUAGE_CHOICES",
+        "ComplaintCategoryEnum": "apps.assistant.models.Complaint.Category",
+        "PostCategoryEnum": "apps.community.models.Post.Category",
+        "PhraseCategoryEnum": "apps.translation.models.Phrase.Category",
+        "GuideCategoryEnum": "apps.assistant.models.AdminGuide.Category",
+    },
 }
