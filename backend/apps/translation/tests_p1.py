@@ -1,0 +1,103 @@
+import io
+from unittest import mock
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
+from PIL import Image
+
+from apps.core.exceptions import ServiceError
+from apps.core.testing import client_for, make_worker
+from apps.translation import google
+from apps.translation.models import LanguageCourse
+
+
+def png():
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4)).save(buf, "PNG")
+    return SimpleUploadedFile("a.png", buf.getvalue(), content_type="image/png")
+
+
+class LanguagesPhrasesTest(TestCase):
+    def test_languages(self):
+        res = client_for().get("/api/languages/").json()
+        self.assertEqual(len(res), 10)
+        self.assertEqual(res[0], {"code": "ko", "native_name": "한국어", "name": "Korean"})
+
+    def test_phrases(self):
+        c = client_for()
+        res = c.get("/api/phrases/", {"category": "safety"}, HTTP_ACCEPT_LANGUAGE="th").json()
+        self.assertEqual(len(res), 4)
+        self.assertTrue(res[0]["text"].startswith("[th]"))
+        self.assertEqual(res[0]["category_label"], "안전")
+        ko = c.get("/api/phrases/", {"q": "안전모"}).json()
+        self.assertEqual([p["text_ko"] for p in ko], ["안전모를 착용하세요"])
+        self.assertEqual(ko[0]["text"], "안전모를 착용하세요")  # ko 는 번역 없이 원문
+
+
+class VoiceImageTest(TestCase):
+    def setUp(self):
+        self.c = client_for(make_worker())
+
+    def test_voice(self):
+        audio = SimpleUploadedFile("a.webm", b"\x00\x01", content_type="audio/webm")
+        with mock.patch.object(google, "speech_to_text", return_value="안녕하세요") as m:
+            res = self.c.post("/api/translate/voice/", {"audio": audio, "source": "ko", "target": "th"}, format="multipart")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(res.json(), {"transcript": "안녕하세요", "source": "ko", "target": "th", "translated_text": "[th] 안녕하세요"})
+        self.assertEqual(m.call_args.args[1:], ("ko", "WEBM_OPUS"))
+
+    def test_voice_empty_transcript(self):
+        with mock.patch.object(google, "speech_to_text", return_value=""):
+            res = self.c.post("/api/translate/voice/", {"audio": SimpleUploadedFile("a.webm", b"x"), "source": "ko", "target": "th"}, format="multipart")
+        self.assertEqual(res.json()["translated_text"], "")
+
+    def test_image_auto_source(self):
+        with mock.patch.object(google, "image_to_text", return_value="DANGER") as m:
+            res = self.c.post("/api/translate/image/", {"image": png(), "target": "ko"}, format="multipart")
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual((res.json()["detected_text"], res.json()["source"], res.json()["translated_text"]), ("DANGER", "auto", "[ko] DANGER"))
+
+    def test_requires_auth_and_valid_input(self):
+        self.assertEqual(client_for().post("/api/translate/image/", {}, format="multipart").status_code, 401)
+        self.assertEqual(self.c.post("/api/translate/image/", {"target": "ko"}, format="multipart").status_code, 400)
+
+    @override_settings(GOOGLE_TRANSLATE_API_KEY="")
+    def test_google_key_missing(self):
+        with self.assertRaises(ServiceError):
+            google.image_to_text(b"x")
+
+    def test_google_request_shape(self):
+        captured = {}
+
+        def fake(req, timeout=None):
+            import json
+            captured["url"], captured["body"] = req.full_url, json.loads(req.data)
+            return io.BytesIO(b'{"results":[{"alternatives":[{"transcript":" hello "}]}]}')
+
+        with override_settings(GOOGLE_TRANSLATE_API_KEY="K"), mock.patch("urllib.request.urlopen", fake):
+            out = google.speech_to_text(b"abc", "zh", "OGG_OPUS")
+        self.assertEqual(out, "hello")
+        self.assertIn("speech.googleapis.com", captured["url"])
+        self.assertEqual(captured["body"]["config"]["languageCode"], "cmn-Hans-CN")
+        self.assertEqual(captured["body"]["config"]["encoding"], "OGG_OPUS")
+
+
+class CourseTest(TestCase):
+    def test_enroll_flow(self):
+        c = client_for(make_worker())
+        res = c.get("/api/courses/").json()
+        self.assertEqual(len(res), 3)
+        cid = res[0]["id"]
+        r = c.post(f"/api/courses/{cid}/enroll/")
+        self.assertEqual((r.status_code, r.json()["is_enrolled"], r.json()["enrolled_count"]), (201, True, 1))
+        self.assertEqual(c.post(f"/api/courses/{cid}/enroll/").json()["code"], "already_enrolled")
+        self.assertEqual([x["id"] for x in c.get("/api/courses/mine/").json()["results"]], [cid])
+        self.assertFalse(c.delete(f"/api/courses/{cid}/enroll/").json()["is_enrolled"])
+        self.assertEqual(client_for().post(f"/api/courses/{cid}/enroll/").status_code, 401)
+
+    def test_capacity(self):
+        LanguageCourse.objects.update(capacity=1)
+        cid = LanguageCourse.objects.first().id
+        client_for(make_worker("a")).post(f"/api/courses/{cid}/enroll/")
+        res = client_for(make_worker("b")).post(f"/api/courses/{cid}/enroll/")
+        self.assertEqual((res.status_code, res.json()["code"]), (409, "course_full"))
