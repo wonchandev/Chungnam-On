@@ -13,6 +13,7 @@ SPEECH_LANG = {
     "ko": "ko-KR", "en": "en-US", "vi": "vi-VN", "th": "th-TH", "zh": "cmn-Hans-CN",
     "uz": "uz-UZ", "km": "km-KH", "ne": "ne-NP", "id": "id-ID", "mn": "mn-MN",
 }
+MAX_INLINE_AUDIO = 10 * 1024 * 1024  # 동기 인식에 그대로 실어 보낼 수 있는 크기
 ENCODINGS = {"WEBM_OPUS": 48000, "OGG_OPUS": 48000, "LINEAR16": 16000, "FLAC": 16000, "MP3": 16000}
 
 
@@ -41,10 +42,17 @@ def speech_to_text(audio: bytes, lang: str, encoding: str = "WEBM_OPUS") -> str:
     return " ".join(r["alternatives"][0]["transcript"].strip() for r in data.get("results", []) if r.get("alternatives"))
 
 
-def image_to_text(image: bytes) -> str:
-    """사진 속 글자(OCR) 추출"""
+def annotate_image(image: bytes) -> dict:
+    """사진 OCR 원본 응답(responses[0]). 글자 영역·좌표가 필요하면 apps.translation.ocr 로 정리한다."""
     data = _post("https://vision.googleapis.com/v1/images:annotate", {
         "requests": [{"image": {"content": base64.b64encode(image).decode()}, "features": [{"type": "TEXT_DETECTION"}]}],
     })
     resp = (data.get("responses") or [{}])[0]
-    return (resp.get("fullTextAnnotation") or {}).get("text", "").strip()
+    if resp.get("error"):
+        raise ServiceError("google_api_error", "사진 글자 인식에 실패했습니다.", 502)
+    return resp
+
+
+def image_to_text(image: bytes) -> str:
+    """사진 속 글자(OCR) 추출"""
+    return (annotate_image(image).get("fullTextAnnotation") or {}).get("text", "").strip()

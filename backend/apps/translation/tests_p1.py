@@ -44,7 +44,9 @@ class VoiceImageTest(TestCase):
         with mock.patch.object(google, "speech_to_text", return_value="안녕하세요") as m:
             res = self.c.post("/api/translate/voice/", {"audio": audio, "source": "ko", "target": "th"}, format="multipart")
         self.assertEqual(res.status_code, 200, res.content)
-        self.assertEqual(res.json(), {"transcript": "안녕하세요", "source": "ko", "target": "th", "translated_text": "[th] 안녕하세요"})
+        # 서버가 해석할 수 없는 파일은 클라이언트가 알려준 encoding 으로 그대로 보낸다 (길이 정보 없음)
+        self.assertEqual(res.json(), {"transcript": "안녕하세요", "source": "ko", "target": "th", "translated_text": "[th] 안녕하세요",
+                                      "duration_seconds": None})
         self.assertEqual(m.call_args.args[1:], ("ko", "WEBM_OPUS"))
 
     def test_voice_empty_transcript(self):
@@ -53,7 +55,7 @@ class VoiceImageTest(TestCase):
         self.assertEqual(res.json()["translated_text"], "")
 
     def test_image_auto_source(self):
-        with mock.patch.object(google, "image_to_text", return_value="DANGER") as m:
+        with mock.patch.object(google, "annotate_image", return_value={"fullTextAnnotation": {"text": "DANGER\n"}}):
             res = self.c.post("/api/translate/image/", {"image": png(), "target": "ko"}, format="multipart")
         self.assertEqual(res.status_code, 200, res.content)
         self.assertEqual((res.json()["detected_text"], res.json()["source"], res.json()["translated_text"]), ("DANGER", "auto", "[ko] DANGER"))

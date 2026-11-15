@@ -23,10 +23,11 @@ from .models import CourseEnrollment, LanguageCourse  # noqa: E402
 
 
 class VoiceTranslateSerializer(serializers.Serializer):
-    audio = serializers.FileField(help_text="녹음 파일 (약 1분 이내, 10MB 이하)")
+    audio = serializers.FileField(help_text="녹음 파일 (webm/ogg/m4a/mp3/wav 등, 기본 5분·25MB 이하)")
     source = serializers.ChoiceField(choices=LANGUAGE_CHOICES, help_text="말하는 언어")
     target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
-    encoding = serializers.ChoiceField(choices=["WEBM_OPUS", "OGG_OPUS", "LINEAR16", "FLAC", "MP3"], default="WEBM_OPUS")
+    encoding = serializers.ChoiceField(choices=["WEBM_OPUS", "OGG_OPUS", "LINEAR16", "FLAC", "MP3"], default="WEBM_OPUS",
+                                       help_text="서버 변환이 불가능할 때만 사용 (보통은 생략)")
 
 
 class ImageTranslateSerializer(serializers.Serializer):
