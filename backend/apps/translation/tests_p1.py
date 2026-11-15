@@ -101,3 +101,31 @@ class CourseTest(TestCase):
         client_for(make_worker("a")).post(f"/api/courses/{cid}/enroll/")
         res = client_for(make_worker("b")).post(f"/api/courses/{cid}/enroll/")
         self.assertEqual((res.status_code, res.json()["code"]), (409, "course_full"))
+
+
+class OpenAITranslatorTest(TestCase):
+    def test_translate_request(self):
+        from apps.translation.backends import OpenAITranslator
+
+        with mock.patch("openai.OpenAI") as cls:
+            cls.return_value.chat.completions.create.return_value = mock.Mock(
+                choices=[mock.Mock(message=mock.Mock(content="  สวัสดี \n"))]
+            )
+            out = OpenAITranslator(api_key="K", model="m").translate("안녕하세요", "ko", "th")
+        self.assertEqual(out, "สวัสดี")
+        kw = cls.return_value.chat.completions.create.call_args.kwargs
+        self.assertEqual((kw["model"], kw["temperature"]), ("m", 0))
+        self.assertIn("Thai", kw["messages"][0]["content"])
+        self.assertIn("Korean", kw["messages"][0]["content"])
+        self.assertEqual(kw["messages"][1], {"role": "user", "content": "안녕하세요"})
+
+    def test_auto_source_and_missing_key(self):
+        from apps.translation.backends import OpenAITranslator
+
+        with mock.patch("openai.OpenAI") as cls:
+            cls.return_value.chat.completions.create.return_value = mock.Mock(choices=[mock.Mock(message=mock.Mock(content="x"))])
+            OpenAITranslator(api_key="K").translate("hi", "auto", "ko")
+        self.assertNotIn("source language", cls.return_value.chat.completions.create.call_args.kwargs["messages"][0]["content"])
+        with override_settings(OPENAI_API_KEY=""):
+            with self.assertRaises(RuntimeError):
+                OpenAITranslator()

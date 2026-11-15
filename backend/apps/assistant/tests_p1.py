@@ -75,7 +75,7 @@ class ChatbotTest(TestCase):
         d = self.c.post("/api/assistant/chat/", {"message": "zzzz qqqq"}, format="json").json()
         self.assertIn("1345", d["answer"])
 
-    @override_settings(ANTHROPIC_API_KEY="k")
+    @override_settings(OPENAI_API_KEY="k")
     def test_llm_stream_and_prompt(self):
         seen = {}
 
@@ -96,7 +96,7 @@ class ChatbotTest(TestCase):
         self.assertEqual(seen["messages"][-1], {"role": "user", "content": "비자 연장 어떻게 해요?"})
         self.assertEqual(ChatTurn.objects.filter(role="assistant").get().text, "Go to the immigration office.")
 
-    @override_settings(ANTHROPIC_API_KEY="k")
+    @override_settings(OPENAI_API_KEY="k")
     def test_history_passed_and_llm_failure(self):
         calls = []
 
@@ -151,3 +151,32 @@ class DocumentTest(TestCase):
         self.assertIsNone(d["body_translated"])  # ko 사용자는 번역 불필요
         bad = client_for(make_worker("z")).post("/api/assistant/documents/", {"type": "nope", "fields": {}}, format="json")
         self.assertEqual(bad.status_code, 400)
+
+
+class OpenAIStreamTest(TestCase):
+    """llm.stream_answer 가 OpenAI 스트림을 텍스트 조각으로 바꾸는지 (네트워크 없이)"""
+
+    def chunk(self, content=None, finish=None, refusal=None):
+        delta = mock.Mock(content=content, refusal=refusal)
+        return mock.Mock(choices=[mock.Mock(delta=delta, finish_reason=finish)])
+
+    @override_settings(OPENAI_API_KEY="k", OPENAI_MODEL="m")
+    def test_stream_and_request_shape(self):
+        stream = [self.chunk("안"), mock.Mock(choices=[]), self.chunk("녕"), self.chunk(None, "stop")]
+        with mock.patch("openai.OpenAI") as cls:
+            cls.return_value.chat.completions.create.return_value = iter(stream)
+            out = list(llm.stream_answer("SYS", [{"role": "user", "content": "hi"}]))
+        self.assertEqual(out, ["안", "녕"])
+        kw = cls.return_value.chat.completions.create.call_args.kwargs
+        self.assertEqual(kw["model"], "m")
+        self.assertTrue(kw["stream"])
+        self.assertEqual(kw["messages"][0], {"role": "system", "content": "SYS"})
+        self.assertEqual(kw["messages"][1], {"role": "user", "content": "hi"})
+
+    @override_settings(OPENAI_API_KEY="k")
+    def test_refusal_and_content_filter(self):
+        with mock.patch("openai.OpenAI") as cls:
+            cls.return_value.chat.completions.create.return_value = iter([self.chunk(None, refusal="no")])
+            self.assertEqual(list(llm.stream_answer("s", [])), [llm.REFUSAL_TEXT])
+            cls.return_value.chat.completions.create.return_value = iter([self.chunk("a"), self.chunk(None, "content_filter")])
+            self.assertEqual(list(llm.stream_answer("s", [])), ["a", llm.REFUSAL_TEXT])

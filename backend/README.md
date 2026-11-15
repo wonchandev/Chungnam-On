@@ -34,7 +34,7 @@ python manage.py runserver
 | `JWT_ACCESS_MINUTES` / `JWT_REFRESH_DAYS` | 토큰 만료 | 30분 / 7일 |
 | `REDIS_URL` | 채팅 채널 레이어·캐시(온라인 상태) 공유용. **운영 필수**, 로컬은 비워도 됨 | 메모리 |
 | `GOOGLE_TRANSLATE_API_KEY` | Google Cloud Translation API 키. 없으면 개발용 echo 번역(`[th] 원문`) | 빈 값 |
-| `ANTHROPIC_API_KEY` / `ASSISTANT_MODEL` | AI 챗봇(Claude). 키가 없으면 행정 가이드 검색 기반 간이 답변 | 빈 값 / `claude-opus-5-5` |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | AI 챗봇(OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변 | 빈 값 / `gpt-4o-mini` |
 | `EMAIL_BACKEND` | 인증번호·비밀번호 재설정 메일 (기본 콘솔 출력) | console |
 | `TRANSLATION_BACKEND` | (선택) 번역 엔진 클래스 경로. 키가 있으면 자동으로 `GoogleTranslator` | 자동 |
 
@@ -82,7 +82,8 @@ python manage.py runserver
 
 ### AI 챗봇 / 음성·사진 번역
 
-- 챗봇: `.env` 에 `ANTHROPIC_API_KEY` 를 넣으면 Claude 가 행정 가이드(관리자 페이지에서 등록)를 근거로 답합니다. 키가 없으면 가이드 검색 결과를 요약해 보여주는 간이 모드로 동작합니다. 모델은 `ASSISTANT_MODEL` 로 변경할 수 있습니다.
+- 챗봇: `.env` 에 `OPENAI_API_KEY` 를 넣으면 OpenAI 모델이 행정 가이드(관리자 페이지에서 등록)를 근거로 답합니다. 키가 없으면 가이드 검색 결과를 요약해 보여주는 간이 모드로 동작합니다. 모델은 `OPENAI_MODEL` 로 변경합니다 (계정에서 사용 가능한 모델명으로).
+- 번역을 OpenAI 로 바꾸려면 `TRANSLATION_BACKEND=apps.translation.backends.OpenAITranslator` (모델 `OPENAI_TRANSLATE_MODEL`). 기본은 Google 번역이며, 음성/사진 번역(STT/OCR)은 항상 Google 키가 필요합니다.
 - 음성/사진 번역은 번역과 같은 `GOOGLE_TRANSLATE_API_KEY` 를 쓰며, GCP 에서 **Speech-to-Text API**, **Cloud Vision API** 도 사용 설정해야 합니다.
 - 이메일 인증/비밀번호 재설정 메일은 기본적으로 콘솔에 출력됩니다. `DEBUG=True` 일 때는 응답에 `dev_code` 가 포함되어 프론트 개발 시 메일 없이 테스트할 수 있습니다. SMS 는 미연동(로그만).
 

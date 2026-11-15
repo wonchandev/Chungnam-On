@@ -1,4 +1,4 @@
-"""행정·생활 AI 챗봇: 행정 가이드 검색(RAG) + Claude 답변 + 대화 저장"""
+"""행정·생활 AI 챗봇: 행정 가이드 검색(RAG) + OpenAI 답변 + 대화 저장"""
 import json
 import logging
 import re

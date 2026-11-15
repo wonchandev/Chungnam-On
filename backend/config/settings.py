@@ -153,9 +153,11 @@ TRANSLATION_BACKEND = env(
     else "apps.translation.backends.EchoTranslator",
 )
 
-# AI 행정·생활 챗봇 (Claude). 키가 없으면 행정 가이드 검색 기반 간이 답변으로 동작.
-ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
-ASSISTANT_MODEL = env("ASSISTANT_MODEL", default="claude-opus-5-5")
+# AI 행정·생활 챗봇 (OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변으로 동작.
+# 모델명은 계정에서 사용 가능한 값으로 .env 에서 바꿀 수 있다.
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o-mini")
+OPENAI_TRANSLATE_MODEL = env("OPENAI_TRANSLATE_MODEL", default="gpt-4o-mini")
 
 # 이메일(인증번호/비밀번호 재설정): 기본은 콘솔 출력(개발용)
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
