@@ -1,4 +1,5 @@
 import io
+import json
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -104,6 +105,20 @@ class CourseTest(TestCase):
 
 
 class OpenAITranslatorTest(TestCase):
+    def test_batch_returns_ordered_translations_in_one_request(self):
+        from apps.translation.backends import OpenAITranslator
+
+        with mock.patch("openai.OpenAI") as cls:
+            create = cls.return_value.chat.completions.create
+            create.return_value = mock.Mock(choices=[mock.Mock(message=mock.Mock(
+                content='{"translations":["Hard hats", "Break time"]}',
+            ))])
+            result = OpenAITranslator(api_key="K", model="m").translate_batch(["안전모", "휴게시간"], "ko", "en")
+        self.assertEqual(result, ["Hard hats", "Break time"])
+        create.assert_called_once()
+        self.assertEqual(create.call_args.kwargs["response_format"], {"type": "json_object"})
+        self.assertEqual(json.loads(create.call_args.kwargs["messages"][1]["content"]), ["안전모", "휴게시간"])
+
     def test_translate_request(self):
         from apps.translation.backends import OpenAITranslator
 

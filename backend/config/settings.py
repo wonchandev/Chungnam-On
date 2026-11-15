@@ -181,6 +181,7 @@ SPECTACULAR_SETTINGS = {
         "JobStatusEnum": "apps.jobs.models.JobPost.Status",
         "PayTypeEnum": "apps.jobs.models.JobPost.PayType",
         "LanguageEnum": "apps.translation.serializers.LANGUAGE_CHOICES",
+        "SourceLanguageEnum": "apps.translation.serializers.SOURCE_LANGUAGE_CHOICES",
         "ComplaintCategoryEnum": "apps.assistant.models.Complaint.Category",
         "PostCategoryEnum": "apps.community.models.Post.Category",
         "PhraseCategoryEnum": "apps.translation.models.Phrase.Category",

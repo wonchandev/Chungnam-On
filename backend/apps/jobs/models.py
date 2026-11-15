@@ -113,6 +113,14 @@ class JobPostTranslation(models.Model):
         unique_together = ("job", "lang")
 
 
+class JobTranslationTask(models.Model):
+    job = models.OneToOneField(JobPost, on_delete=models.CASCADE, related_name="translation_task")
+    queued_at = models.DateTimeField(auto_now=True, db_index=True)
+    claim_id = models.UUIDField(null=True)
+    lease_until = models.DateTimeField(null=True)
+    failed = models.BooleanField(default=False)
+
+
 class Application(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "대기"

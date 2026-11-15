@@ -80,6 +80,21 @@ python manage.py runserver
 4. 서비스 언어 코드 중 `zh` 는 구글의 `zh-CN` 으로 변환됩니다 (`GoogleTranslator.CODE_MAP`). 지원 언어는 `settings.SUPPORTED_LANGUAGES`.
 5. 개발·테스트에서는 키 없이도 동작하며, 테스트는 외부 호출 없이 mock 으로 검증합니다.
 
+채팅의 `source_lang`은 실제 발신 텍스트의 감지 결과입니다. 감지에 실패하거나 텍스트가 없는 메시지에는 채팅 설정 언어를 사용합니다. 텍스트 번역 API에서는 `source: "auto"`로 자동 감지를 요청할 수 있습니다. 공고와 한국어 채팅에는 [현장 용어집](apps/translation/glossary.py)의 번역어를 적용합니다.
+
+### 공고 번역 워커
+
+공고 등록·복사·번역 대상 문구 수정은 원문을 저장하고 번역을 대기열에 추가합니다. 번역이 완료되기 전과 실패한 언어의 조회 응답은 원문을 표시합니다. 워커는 제목·설명·직무를 대상 언어별로 한 번에 번역 요청합니다.
+
+마이그레이션을 적용한 뒤 백엔드 서버와 같은 데이터베이스를 사용하는 별도 프로세스에서 워커를 실행합니다.
+
+```bash
+python manage.py migrate
+python manage.py translate_jobs
+```
+
+`python manage.py translate_jobs --once`는 현재 처리 가능한 공고만 번역하고 종료합니다. 언어별 실패는 워커 로그에 기록되며, 성공한 번역은 바로 조회할 수 있습니다.
+
 ### AI 챗봇 / 음성·사진 번역
 
 - 챗봇: `.env` 에 `OPENAI_API_KEY` 를 넣으면 OpenAI 모델이 행정 가이드(관리자 페이지에서 등록)를 근거로 답합니다. 키가 없으면 가이드 검색 결과를 요약해 보여주는 간이 모드로 동작합니다. 모델은 `OPENAI_MODEL` 로 변경합니다 (계정에서 사용 가능한 모델명으로).

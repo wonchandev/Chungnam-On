@@ -7,7 +7,7 @@ from PIL import Image
 from apps.accounts.models import WorkerProfile
 from apps.core.models import Notification, Region
 from apps.core.testing import client_for, make_employer, make_job, make_worker
-from apps.jobs.models import Application, JobCategory, JobPost
+from apps.jobs.models import Application, JobCategory, JobPost, JobTranslationTask
 
 
 class JobDuplicateTicker(TestCase):
@@ -25,6 +25,7 @@ class JobDuplicateTicker(TestCase):
         self.assertIsNone(new.deadline)
         self.assertEqual(new.title, "원본")
         self.assertEqual(new.status, "open")
+        self.assertTrue(JobTranslationTask.objects.filter(job=new).exists())
         self.assertEqual(client_for(make_employer("b2", number="2234567890")).post(f"/api/jobs/{self.job.id}/duplicate/").status_code, 404)
 
     def test_ticker(self):

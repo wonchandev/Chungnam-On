@@ -16,7 +16,7 @@ from apps.core.exceptions import ServiceError
 from apps.core.services import is_blocked_between, notify
 
 from .filters import JobFilter
-from .models import Application, Bookmark, JobCategory, JobPost, RecentView, Review, SearchLog
+from .models import Application, Bookmark, JobCategory, JobPost, JobTranslationTask, RecentView, Review, SearchLog
 from .permissions import IsEmployer, IsWorker
 from .serializers import (
     ApplicationDecisionSerializer, ApplicationSerializer, ApplyRequestSerializer, CategorySerializer,
@@ -24,7 +24,8 @@ from .serializers import (
     JobWriteSerializer, RecommendedJobSerializer,
     ReviewCreateSerializer, ReviewSerializer, annotate_jobs,
 )
-from .services import apply_review_score, recommend_jobs, sync_job_translations
+from .services import apply_review_score, recommend_jobs
+from .translation_tasks import TRANSLATED_FIELDS, queue_job_translation
 
 PARSERS = [JSONParser, MultiPartParser, FormParser]
 
@@ -77,8 +78,9 @@ class JobListCreateView(JobContextMixin, generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         ser = self.get_serializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        job = ser.save(company=request.user.company)
-        sync_job_translations(job)
+        with transaction.atomic():
+            job = ser.save(company=request.user.company)
+            queue_job_translation(job)
         out = JobDetailSerializer(annotate_jobs(JobPost.objects.filter(pk=job.pk)).get(), context=self.get_serializer_context())
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -107,17 +109,31 @@ class JobDetailView(JobContextMixin, generics.RetrieveUpdateDestroyAPIView):
         return resp
 
     def update(self, request, *args, **kwargs):
-        job = self.get_object()
-        ser = JobWriteSerializer(job, data=request.data, partial=True, context=self.get_serializer_context())
-        ser.is_valid(raise_exception=True)
-        job = ser.save()
-        sync_job_translations(job)
+        from django.shortcuts import get_object_or_404
+
+        with transaction.atomic():
+            job = get_object_or_404(
+                JobPost.objects.select_for_update(of=("self",)).exclude(status=JobPost.Status.CANCELLED),
+                pk=kwargs["pk"], company__owner=request.user, is_hidden=False,
+            )
+            self.check_object_permissions(request, job)
+            ser = JobWriteSerializer(job, data=request.data, partial=True, context=self.get_serializer_context())
+            ser.is_valid(raise_exception=True)
+            text_changed = any(
+                field in ser.validated_data and ser.validated_data[field] != getattr(job, field)
+                for field in TRANSLATED_FIELDS
+            )
+            job = ser.save()
+            if text_changed:
+                queue_job_translation(job)
         out = JobDetailSerializer(self.get_queryset().get(pk=job.pk), context=self.get_serializer_context())
         return Response(out.data)
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         instance.status = JobPost.Status.CANCELLED
         instance.save(update_fields=["status", "updated_at"])
+        JobTranslationTask.objects.filter(job=instance).delete()
 
 
 class JobCloseView(APIView):
@@ -403,8 +419,9 @@ class JobDuplicateView(APIView):
                   ("id", "created_at", "updated_at", "start_date", "end_date", "duration_days", "deadline", "status", "is_hidden")]
         new = JobPost(**{f: getattr(src, f) for f in fields}, start_date=start,
                       end_date=(start + length) if length is not None else None)
-        new.save()
-        sync_job_translations(new)
+        with transaction.atomic():
+            new.save()
+            queue_job_translation(new)
         out = JobDetailSerializer(annotate_jobs(JobPost.objects.filter(pk=new.pk)).get(), context={"request": request, "bookmarked_ids": set()})
         return Response(out.data, status=status.HTTP_201_CREATED)
 

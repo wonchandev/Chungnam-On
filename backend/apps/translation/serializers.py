@@ -3,11 +3,12 @@ from rest_framework import serializers
 
 
 LANGUAGE_CHOICES = [(l, l) for l in settings.SUPPORTED_LANGUAGES]
+SOURCE_LANGUAGE_CHOICES = LANGUAGE_CHOICES + [("auto", "auto")]
 
 
 class TranslateRequestSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=5000)
-    source = serializers.ChoiceField(choices=LANGUAGE_CHOICES, default="ko")
+    source = serializers.ChoiceField(choices=SOURCE_LANGUAGE_CHOICES, default="ko", help_text="auto: 자동 감지")
     target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
 
 
@@ -30,7 +31,7 @@ class VoiceTranslateSerializer(serializers.Serializer):
 
 class ImageTranslateSerializer(serializers.Serializer):
     image = serializers.ImageField(help_text="번역할 글자가 있는 사진")
-    source = serializers.ChoiceField(choices=LANGUAGE_CHOICES + [("auto", "auto")], default="auto", help_text="auto: 자동 감지")
+    source = serializers.ChoiceField(choices=SOURCE_LANGUAGE_CHOICES, default="auto", help_text="auto: 자동 감지")
     target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
 
 

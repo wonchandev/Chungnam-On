@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import TranslateRequestSerializer, TranslateResponseSerializer
-from .services import translate_text
+from .services import detect_source_language, translate_text
 
 
 class TranslateTextView(APIView):
@@ -17,6 +17,8 @@ class TranslateTextView(APIView):
         ser = TranslateRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
+        if d["source"] == "auto":
+            d["source"] = detect_source_language(d["text"], fallback="auto")
         translated = translate_text(d["text"], d["source"], d["target"])
         return Response({**d, "translated_text": translated})
 
