@@ -152,6 +152,7 @@ TRANSLATION_BACKEND = env(
     if GOOGLE_TRANSLATE_API_KEY
     else "apps.translation.backends.EchoTranslator",
 )
+TRANSLATION_CACHE_TTL_DAYS = env.int("TRANSLATION_CACHE_TTL_DAYS", default=30)
 
 # AI 행정·생활 챗봇 (OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변으로 동작.
 # 모델명은 계정에서 사용 가능한 값으로 .env 에서 바꿀 수 있다.

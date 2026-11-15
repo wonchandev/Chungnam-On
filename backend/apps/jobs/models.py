@@ -119,6 +119,9 @@ class JobTranslationTask(models.Model):
     claim_id = models.UUIDField(null=True)
     lease_until = models.DateTimeField(null=True)
     failed = models.BooleanField(default=False)
+    retry_count = models.PositiveSmallIntegerField(default=0)
+    available_at = models.DateTimeField(null=True, db_index=True)
+    retry_languages = models.JSONField(null=True)
 
 
 class Application(models.Model):

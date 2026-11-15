@@ -37,6 +37,7 @@ python manage.py runserver
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | AI 챗봇(OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변 | 빈 값 / `gpt-4o-mini` |
 | `EMAIL_BACKEND` | 인증번호·비밀번호 재설정 메일 (기본 콘솔 출력) | console |
 | `TRANSLATION_BACKEND` | (선택) 번역 엔진 클래스 경로. 키가 있으면 자동으로 `GoogleTranslator` | 자동 |
+| `TRANSLATION_CACHE_TTL_DAYS` | 번역 캐시 재사용 기간(일). `0`은 캐시 사용 중지 | 30 |
 
 ## API 개요
 
@@ -80,6 +81,10 @@ python manage.py runserver
 4. 서비스 언어 코드 중 `zh` 는 구글의 `zh-CN` 으로 변환됩니다 (`GoogleTranslator.CODE_MAP`). 지원 언어는 `settings.SUPPORTED_LANGUAGES`.
 5. 개발·테스트에서는 키 없이도 동작하며, 테스트는 외부 호출 없이 mock 으로 검증합니다.
 
+번역 캐시는 유니코드 NFC와 줄바꿈을 정규화한 원문을 사용합니다. 번역 엔진·모델과 입력에 적용된 용어집 내용이 같고 기간 내인 결과를 재사용합니다. 기간이 지난 결과는 다음 요청 때 새 번역으로 갱신합니다.
+
+텍스트 번역은 공급자 타임아웃에 `504 translation_timeout`, 일시적인 요청 제한에 `503 translation_rate_limited`, 일일·결제 한도 초과에 `503 translation_quota_exhausted`를 응답합니다. 공급자가 대기 시간을 주면 `Retry-After` 헤더에 포함합니다.
+
 채팅의 `source_lang`은 실제 발신 텍스트의 감지 결과입니다. 감지에 실패하거나 텍스트가 없는 메시지에는 채팅 설정 언어를 사용합니다. 텍스트 번역 API에서는 `source: "auto"`로 자동 감지를 요청할 수 있습니다. 공고와 한국어 채팅에는 [현장 용어집](apps/translation/glossary.py)의 번역어를 적용합니다.
 
 ### 공고 번역 워커
@@ -93,7 +98,9 @@ python manage.py migrate
 python manage.py translate_jobs
 ```
 
-`python manage.py translate_jobs --once`는 현재 처리 가능한 공고만 번역하고 종료합니다. 언어별 실패는 워커 로그에 기록되며, 성공한 번역은 바로 조회할 수 있습니다.
+타임아웃, 일시적인 요청 제한, 공급자 장애는 기본 30·60·120초 간격으로 최대 3번 재시도합니다. 공급자가 `Retry-After`를 주면 안내한 시간 이상 대기합니다. 성공한 언어는 바로 조회할 수 있고 재시도에서도 유지합니다.
+
+`python manage.py translate_jobs --once`는 현재 실행 가능한 작업을 처리하고 종료합니다. 한도나 공급자 설정을 바로잡은 뒤 `python manage.py translate_jobs --retry-failed --once`로 실패한 공고의 남은 번역을 다시 대기열에 등록하고 실행할 수 있습니다.
 
 ### AI 챗봇 / 음성·사진 번역
 

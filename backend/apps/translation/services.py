@@ -1,13 +1,19 @@
 import hashlib
+import json
 import logging
+import unicodedata
+from datetime import timedelta
 
 from django.conf import settings
+from django.utils import timezone
 from django.utils.module_loading import import_string
 
+from .errors import TranslationProviderError
 from .glossary import mark_terms, restore_terms
 from .models import TranslationCache
 
 logger = logging.getLogger(__name__)
+CACHE_VERSION = 2
 
 
 def get_translator():
@@ -38,39 +44,52 @@ def translate_batch(texts: list[str], source: str, target: str) -> list[str]:
     """한 대상 언어로 묶어 번역한다. 빈 입력과 캐시가 있는 문장은 외부 요청에서 제외한다."""
     if source == target:
         return list(texts)
-    unique_texts = dict.fromkeys(text for text in texts if text.strip())
+    normalized = [unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n")) for text in texts]
+    unique_texts = dict.fromkeys(text for text in normalized if text.strip())
     if not unique_texts:
         return list(texts)
 
     backend = settings.TRANSLATION_BACKEND
+    model = settings.OPENAI_TRANSLATE_MODEL if backend == "apps.translation.backends.OpenAITranslator" else None
+    cache_days = settings.TRANSLATION_CACHE_TTL_DAYS
     use_glossary = source in {"ko", "auto"} and backend != "apps.translation.backends.EchoTranslator"
     prepared = {}
     for text in unique_texts:
         marked, terms = mark_terms(text, target) if use_glossary else (text, {})
-        cache_input = f"{source}|{target}|{text}"
-        if terms:
-            cache_input += f"|glossary|{backend}|{list(terms.values())!r}"
+        glossary_input = [marked, terms] if terms else None
+        cache_input = json.dumps([CACHE_VERSION, backend, model, source, target, text, glossary_input], sort_keys=True)
         key = hashlib.sha256(cache_input.encode()).hexdigest()
         prepared[text] = (key, marked, terms)
 
-    cached = TranslationCache.objects.in_bulk([item[0] for item in prepared.values()], field_name="key")
+    cached = {}
+    if cache_days > 0:
+        cutoff = timezone.now() - timedelta(days=cache_days)
+        cached = TranslationCache.objects.filter(created_at__gt=cutoff).in_bulk(
+            [item[0] for item in prepared.values()], field_name="key",
+        )
     missing = {text: item for text, item in prepared.items() if item[0] not in cached}
     results = {text: cached[item[0]].translated_text for text, item in prepared.items() if item[0] in cached}
     if missing:
         translated = get_translator().translate_batch([item[1] for item in missing.values()], source, target)
         if len(translated) != len(missing) or any(not isinstance(value, str) or not value.strip() for value in translated):
-            raise ValueError("Translation backend returned missing or invalid text")
+            raise TranslationProviderError("translation_invalid_response")
 
         rows = []
         for (text, (key, _, terms)), value in zip(missing.items(), translated, strict=True):
-            result = restore_terms(value, terms)
+            try:
+                result = restore_terms(value, terms)
+            except ValueError as error:
+                raise TranslationProviderError("translation_invalid_response") from error
             results[text] = result
             rows.append(TranslationCache(
                 key=key, source_lang=source, target_lang=target, source_text=text, translated_text=result, backend=backend,
             ))
-        TranslationCache.objects.bulk_create(rows, ignore_conflicts=True)
+        if cache_days > 0:
+            TranslationCache.objects.bulk_create(
+                rows, update_conflicts=True, unique_fields=["key"], update_fields=["translated_text", "created_at"],
+            )
 
-    return [results.get(text, text) for text in texts]
+    return [results.get(key, original) for original, key in zip(texts, normalized, strict=True)]
 
 
 def translate_many(text: str, source: str, targets) -> dict:
@@ -81,6 +100,8 @@ def translate_many(text: str, source: str, targets) -> dict:
             continue
         try:
             out[target] = translate_text(text, source, target)
+        except TranslationProviderError as error:
+            logger.warning("Translation %s->%s failed (%s)", source, target, error.get_codes())
         except Exception:  # 외부 API 장애
             logger.exception("translation failed %s->%s", source, target)
     return out
