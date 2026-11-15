@@ -45,6 +45,18 @@ React 프론트 팀원에게 전달하는 문서입니다. 상세 스키마는 *
 - 업종 코드: `manufacturing, construction, agriculture, logistics, retail, safety, food, etc`
 - 지역 코드: 천안 `44130`, 아산 `44200`, 당진 `44270` … (`GET /api/regions/`)
 
+### 사진·음성 번역 응답
+- **사진** `POST /api/translate/image/` (multipart `image`, `target`, `source`=auto 기본): 기존 `detected_text`·`translated_text`(전체 문장)에 더해 글자 영역별 결과를 줍니다.
+  ```json
+  {"detected_text": "...", "source": "auto", "target": "vi", "translated_text": "...",
+   "image_width": 800, "image_height": 600,
+   "regions": [{"text": "안전모 착용", "translated_text": "...", "language": "ko",
+                "box": {"x": 0, "y": 0, "width": 300, "height": 50},
+                "vertices": [{"x": 0, "y": 0}, {"x": 300, "y": 0}, {"x": 300, "y": 50}, {"x": 0, "y": 50}]}]}
+  ```
+  좌표는 업로드한 원본 이미지의 픽셀 기준입니다. 화면에 띄운 크기 ÷ `image_width`(`image_height`) 비율로 곱해 오버레이하세요. 기울어진 글자는 `vertices`(시계 방향 4점)를 쓰면 됩니다. 영역은 문단 단위이며 최대 100개입니다.
+- **음성** `POST /api/translate/voice/` (multipart `audio`, `source`, `target`): webm/ogg/m4a/mp3/wav 등 대부분 형식을 서버가 변환하므로 `encoding`은 보낼 필요가 없습니다. 기본 **5분·25MB**까지 가능하고, 응답에 `duration_seconds`(초)가 추가됩니다. 너무 길면 413 `audio_too_long`, 해석할 수 없는 파일은 400 `unsupported_audio`입니다.
+
 ## 5. 채팅 (WebSocket)
 - 연결: `ws://127.0.0.1:8000/ws/chat/{room_id}/?token=<access>`
 - 보내기: `{"type":"message","text":"..."}` | `{"type":"read"}`
