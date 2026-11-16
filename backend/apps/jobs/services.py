@@ -3,26 +3,10 @@ from datetime import date
 
 from django.utils import timezone
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 
-from apps.translation.services import translate_many
-
-from .models import JobPost, JobPostTranslation
-
-
-def sync_job_translations(job: JobPost):
-    """공고(ko 원문)를 지원 언어로 번역해 저장. 번역 실패 언어는 건너뜀."""
-    targets = [l for l in settings.SUPPORTED_LANGUAGES if l != "ko"]
-    titles = translate_many(job.title, "ko", targets)
-    descs = translate_many(job.description, "ko", targets) if job.description else {}
-    works = translate_many(job.work_type, "ko", targets) if job.work_type else {}
-    for lang, title in titles.items():
-        JobPostTranslation.objects.update_or_create(
-            job=job, lang=lang,
-            defaults=dict(title=title, description=descs.get(lang, ""), work_type=works.get(lang, "")),
-        )
+from .models import JobPost
 
 
 def close_expired_jobs() -> int:

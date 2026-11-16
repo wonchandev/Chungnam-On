@@ -146,12 +146,15 @@ DEFAULT_LANGUAGE = "ko"
 # 번역 엔진 (apps/translation/backends.py): Google Cloud Translation.
 # API 키가 없으면 개발용 EchoTranslator('[언어] 원문')로 동작합니다.
 GOOGLE_TRANSLATE_API_KEY = env("GOOGLE_TRANSLATE_API_KEY", default="")
+GOOGLE_TTS_API_KEY = env("GOOGLE_TTS_API_KEY", default="")
+GOOGLE_TTS_USE_ADC = env.bool("GOOGLE_TTS_USE_ADC", default=False)
 TRANSLATION_BACKEND = env(
     "TRANSLATION_BACKEND",
     default="apps.translation.backends.GoogleTranslator"
     if GOOGLE_TRANSLATE_API_KEY
     else "apps.translation.backends.EchoTranslator",
 )
+TRANSLATION_CACHE_TTL_DAYS = env.int("TRANSLATION_CACHE_TTL_DAYS", default=30)
 
 # AI 행정·생활 챗봇 (OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변으로 동작.
 # 모델명은 계정에서 사용 가능한 값으로 .env 에서 바꿀 수 있다.
@@ -161,6 +164,11 @@ OPENAI_TRANSLATE_MODEL = env("OPENAI_TRANSLATE_MODEL", default="gpt-4o-mini")
 OPENAI_EMBEDDING_MODEL = env("OPENAI_EMBEDDING_MODEL", default="text-embedding-3-small")
 ASSISTANT_DAILY_LIMIT = env.int("ASSISTANT_DAILY_LIMIT", default=50)  # 사용자당 하루 챗봇 질문 수
 ASSISTANT_MIN_SCORE = env.float("ASSISTANT_MIN_SCORE", default=0.3)  # 임베딩 검색 최소 유사도
+
+# 실시간 음성 번역의 Claude 문맥 보정
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+ANTHROPIC_VOICE_MODEL = env("ANTHROPIC_VOICE_MODEL", default="claude-haiku-5-5")
+ANTHROPIC_WORKSPACE_ID = env("ANTHROPIC_WORKSPACE_ID", default="")
 
 # 이메일(인증번호/비밀번호 재설정): 기본은 콘솔 출력(개발용)
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
@@ -184,6 +192,7 @@ SPECTACULAR_SETTINGS = {
         "JobStatusEnum": "apps.jobs.models.JobPost.Status",
         "PayTypeEnum": "apps.jobs.models.JobPost.PayType",
         "LanguageEnum": "apps.translation.serializers.LANGUAGE_CHOICES",
+        "SourceLanguageEnum": "apps.translation.serializers.SOURCE_LANGUAGE_CHOICES",
         "ComplaintCategoryEnum": "apps.assistant.models.Complaint.Category",
         "PostCategoryEnum": "apps.community.models.Post.Category",
         "PhraseCategoryEnum": "apps.translation.models.Phrase.Category",

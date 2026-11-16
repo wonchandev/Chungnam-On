@@ -4,7 +4,7 @@ from django.db import models
 class TranslationCache(models.Model):
     """번역 결과 캐시 (같은 원문·언어쌍은 외부 API 를 다시 호출하지 않음)"""
 
-    key = models.CharField(max_length=64, unique=True, help_text="sha256(source|target|text)")
+    key = models.CharField(max_length=64, unique=True, help_text="입력, 언어쌍, 엔진, 모델 및 용어집의 SHA-256")
     source_lang = models.CharField(max_length=10)
     target_lang = models.CharField(max_length=10)
     source_text = models.TextField()

@@ -1,12 +1,16 @@
 from datetime import date, time, timedelta
+from io import StringIO
+from unittest import mock
+from uuid import uuid4
 
 from django.core.management import call_command
 from django.utils import timezone
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.core.testing import client_for, make_employer, make_job, make_worker
-from apps.jobs.models import Application, JobCategory, JobPost
+from apps.jobs.models import Application, JobCategory, JobPost, JobTranslationTask
 from apps.core.models import Region
+from apps.translation.errors import TranslationProviderError
 
 
 def payload(**kw):
@@ -35,7 +39,8 @@ class JobCrudTest(TestCase):
         jid = res.json()["id"]
         self.assertEqual(res.json()["company_name"], "충남 건설")
         self.assertTrue(res.json()["tags"]["beginner_ok"])
-        self.assertEqual(JobPost.objects.get(pk=jid).translations.count(), 9)  # ko 제외 지원 언어
+        self.assertTrue(JobTranslationTask.objects.filter(job_id=jid).exists())
+        self.assertFalse(JobPost.objects.get(pk=jid).translations.exists())
 
         res = c.patch(f"/api/jobs/{jid}/", {"pay_amount": 350000}, format="json")
         self.assertEqual(res.json()["pay_amount"], 350000)
@@ -46,6 +51,7 @@ class JobCrudTest(TestCase):
         self.assertEqual(c.post(f"/api/jobs/{jid}/close/").status_code, 204)
         self.assertEqual(client_for().get("/api/jobs/").json()["count"], 0)  # 마감된 공고는 목록 제외
         self.assertEqual(c.delete(f"/api/jobs/{jid}/").status_code, 204)
+        self.assertFalse(JobTranslationTask.objects.filter(job_id=jid).exists())
         self.assertEqual(client_for().get(f"/api/jobs/{jid}/").status_code, 404)
 
     def test_validation(self):
@@ -58,13 +64,137 @@ class JobCrudTest(TestCase):
 
     def test_translated_title_by_accept_language(self):
         c = client_for(self.boss)
-        jid = c.post("/api/jobs/", payload(), format="json").json()["id"]
-        res = client_for().get(f"/api/jobs/{jid}/", HTTP_ACCEPT_LANGUAGE="th")
+        data = payload()
+        jid = c.post("/api/jobs/", data, format="json").json()["id"]
+        url = f"/api/jobs/{jid}/"
+        self.assertEqual(client_for().get(url, HTTP_ACCEPT_LANGUAGE="th").json()["title"], data["title"])
+        call_command("translate_jobs", once=True, stdout=StringIO())
+        res = client_for().get(url, HTTP_ACCEPT_LANGUAGE="th")
         self.assertTrue(res.json()["title"].startswith("[th]"))
-        self.assertFalse(client_for().get(f"/api/jobs/{jid}/").json()["title"].startswith("["))
+        self.assertEqual(client_for().get(url).json()["title"], data["title"])
         # 로그인 사용자의 preferred_language 로도 결정
         w = make_worker("w_vi", lang="vi")
-        self.assertTrue(client_for(w).get(f"/api/jobs/{jid}/").json()["title"].startswith("[vi]"))
+        self.assertTrue(client_for(w).get(url).json()["title"].startswith("[vi]"))
+        self.assertEqual(JobPost.objects.get(pk=jid).translations.count(), 9)  # ko 제외 지원 언어
+        self.assertEqual(c.patch(url, {"pay_amount": 350000}, format="json").status_code, 200)
+        self.assertFalse(JobTranslationTask.objects.filter(job_id=jid).exists())
+
+    @override_settings(SUPPORTED_LANGUAGES=["ko", "en"])
+    def test_worker_discards_old_result_when_job_is_edited(self):
+        from apps.jobs.translation_tasks import translate_next_job
+
+        c = client_for(self.boss)
+        jid = c.post("/api/jobs/", payload(), format="json").json()["id"]
+        url = f"/api/jobs/{jid}/"
+        self.assertTrue(translate_next_job())
+        self.assertEqual(c.patch(url, {"title": "두 번째 공고"}, format="json").status_code, 200)
+        self.assertEqual(client_for().get(url, HTTP_ACCEPT_LANGUAGE="en").json()["title"], "두 번째 공고")
+
+        def edit_while_translating(texts, source, target):
+            self.assertEqual(c.patch(url, {"title": "최신 공고"}, format="json").status_code, 200)
+            return [f"[{target}] {text}" for text in texts]
+
+        with mock.patch("apps.jobs.translation_tasks.translate_batch", side_effect=edit_while_translating):
+            self.assertTrue(translate_next_job())
+        self.assertEqual(client_for().get(url, HTTP_ACCEPT_LANGUAGE="en").json()["title"], "최신 공고")
+        self.assertTrue(translate_next_job())
+        self.assertEqual(client_for().get(url, HTTP_ACCEPT_LANGUAGE="en").json()["title"], "[en] 최신 공고")
+
+    @override_settings(SUPPORTED_LANGUAGES=["ko", "en", "th"])
+    def test_worker_keeps_successful_languages_when_one_fails(self):
+        from apps.jobs.translation_tasks import translate_next_job
+
+        jid = client_for(self.boss).post("/api/jobs/", payload(), format="json").json()["id"]
+
+        def translate(texts, source, target):
+            if target == "th":
+                raise TimeoutError
+            return [f"[{target}] {text}" for text in texts]
+
+        with mock.patch("apps.jobs.translation_tasks.translate_batch", side_effect=translate), self.assertLogs("apps.jobs.translation_tasks"):
+            self.assertTrue(translate_next_job())
+        self.assertFalse(translate_next_job())
+        self.assertTrue(JobTranslationTask.objects.get(job_id=jid).failed)
+        self.assertEqual(list(JobPost.objects.get(pk=jid).translations.values_list("lang", flat=True)), ["en"])
+
+    @override_settings(SUPPORTED_LANGUAGES=["ko", "en"])
+    def test_worker_recovers_an_abandoned_task_after_lease_expires(self):
+        from apps.jobs.translation_tasks import translate_next_job
+
+        jid = client_for(self.boss).post("/api/jobs/", payload(), format="json").json()["id"]
+        task = JobTranslationTask.objects.filter(job_id=jid)
+        task.update(claim_id=uuid4(), lease_until=timezone.now() + timedelta(minutes=5))
+        self.assertFalse(translate_next_job())
+        task.update(lease_until=timezone.now() - timedelta(minutes=5))
+        self.assertTrue(translate_next_job())
+        self.assertFalse(task.exists())
+        self.assertTrue(JobPost.objects.get(pk=jid).translations.filter(lang="en").exists())
+
+    @override_settings(SUPPORTED_LANGUAGES=["ko", "en", "th", "vi"])
+    def test_worker_retries_transient_language_and_manually_requeues_permanent_failure(self):
+        from apps.jobs.translation_tasks import translate_next_job
+
+        jid = client_for(self.boss).post("/api/jobs/", payload(), format="json").json()["id"]
+
+        def translate(texts, source, target):
+            if target == "th":
+                raise TranslationProviderError("translation_timeout")
+            if target == "vi":
+                raise TranslationProviderError("translation_provider_error")
+            return [f"[{target}] {text}" for text in texts]
+
+        before = timezone.now()
+        with mock.patch("apps.jobs.translation_tasks.translate_batch", side_effect=translate), self.assertLogs("apps.jobs.translation_tasks"):
+            self.assertTrue(translate_next_job())
+        task = JobTranslationTask.objects.get(job_id=jid)
+        self.assertFalse(task.failed)
+        self.assertEqual(task.retry_count, 1)
+        self.assertEqual(task.retry_languages, ["th"])
+        self.assertGreaterEqual(task.available_at, before + timedelta(seconds=30))
+        self.assertFalse(translate_next_job())
+
+        JobTranslationTask.objects.filter(pk=task.pk).update(available_at=before)
+        with mock.patch("apps.jobs.translation_tasks.translate_batch", return_value=["title", "description", "work"]) as batch:
+            self.assertTrue(translate_next_job())
+            self.assertEqual([call.args[2] for call in batch.call_args_list], ["th"])
+            task.refresh_from_db()
+            self.assertTrue(task.failed)
+            batch.reset_mock()
+            call_command("translate_jobs", retry_failed=True, once=True, stdout=StringIO())
+            self.assertEqual([call.args[2] for call in batch.call_args_list], ["vi"])
+
+        self.assertFalse(JobTranslationTask.objects.filter(job_id=jid).exists())
+        self.assertEqual(set(JobPost.objects.get(pk=jid).translations.values_list("lang", flat=True)), {"en", "th", "vi"})
+
+    @override_settings(SUPPORTED_LANGUAGES=["ko", "en", "th"])
+    def test_worker_waits_for_retry_after_before_translating_other_languages(self):
+        from apps.jobs.translation_tasks import translate_next_job
+
+        jid = client_for(self.boss).post("/api/jobs/", payload(), format="json").json()["id"]
+        before = timezone.now()
+        error = TranslationProviderError("translation_rate_limited", retry_after="90")
+        with mock.patch("apps.jobs.translation_tasks.translate_batch", side_effect=error) as batch, self.assertLogs("apps.jobs.translation_tasks"):
+            self.assertTrue(translate_next_job())
+            self.assertFalse(translate_next_job())
+        self.assertEqual([call.args[2] for call in batch.call_args_list], ["en"])
+        task = JobTranslationTask.objects.get(job_id=jid)
+        self.assertEqual(task.retry_languages, ["en", "th"])
+        self.assertGreaterEqual(task.available_at, before + timedelta(seconds=90))
+
+    @override_settings(SUPPORTED_LANGUAGES=["ko", "en"])
+    def test_worker_stops_after_three_retries(self):
+        from apps.jobs.translation_tasks import translate_next_job
+
+        jid = client_for(self.boss).post("/api/jobs/", payload(), format="json").json()["id"]
+        tasks = JobTranslationTask.objects.filter(job_id=jid)
+        error = TranslationProviderError("translation_timeout")
+        with mock.patch("apps.jobs.translation_tasks.translate_batch", side_effect=error) as batch, self.assertLogs("apps.jobs.translation_tasks"):
+            for _ in range(4):
+                tasks.update(available_at=timezone.now() - timedelta(seconds=1))
+                self.assertTrue(translate_next_job())
+            self.assertFalse(translate_next_job())
+        self.assertEqual(batch.call_count, 4)
+        self.assertTrue(tasks.get().failed)
 
 
 class JobListFilterTest(TestCase):

@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.core.exceptions import ServiceError
 from apps.core.models import Notification
 from apps.core.services import is_blocked_between, notify
-from apps.translation.services import translate_many
+from apps.translation.services import detect_source_language, translate_many
 
 from . import presence
 
@@ -55,9 +55,10 @@ def send_message(room: ChatRoom, sender, text: str = "", image=None) -> Message:
     if any(is_blocked_between(sender, p.user) for p in others):
         raise ServiceError("blocked", "차단 관계에서는 메시지를 보낼 수 없습니다.", 403)
     me = room.participants.get(user=sender)
-    msg = Message.objects.create(room=room, sender=sender, text=text, image=image, source_lang=me.language)
+    source_lang = detect_source_language(text, fallback=me.language)
+    msg = Message.objects.create(room=room, sender=sender, text=text, image=image, source_lang=source_lang)
     if text:
-        translated = translate_many(text, me.language, [p.language for p in others])
+        translated = translate_many(text, source_lang, [p.language for p in others], chat=True)
         for lang, t in translated.items():
             MessageTranslation.objects.create(message=msg, lang=lang, text=t)
     now = timezone.now()

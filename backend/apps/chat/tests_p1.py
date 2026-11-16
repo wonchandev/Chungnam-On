@@ -36,11 +36,15 @@ class ChatP1Test(TestCase):
         self.assertEqual(res.status_code, 201, res.content)
         self.assertTrue(res.json()["image"])
         self.assertEqual(res.json()["text"], "")
+        self.assertEqual(res.json()["source_lang"], "th")
         self.assertEqual(res.json()["translations"], {})
         self.assertEqual(self.cw.post(f"/api/chat/rooms/{self.rid}/messages/", {}, format="json").status_code, 400)
         # 이미지+텍스트
-        res = self.cw.post(f"/api/chat/rooms/{self.rid}/messages/", {"image": png("b.png"), "text": "사진"}, format="multipart")
-        self.assertEqual(res.json()["translations"], {"ko": "[ko] 사진"})
+        res = self.cw.post(
+            f"/api/chat/rooms/{self.rid}/messages/", {"image": png("b.png"), "text": "รูปภาพ"}, format="multipart",
+        )
+        self.assertEqual(res.json()["source_lang"], "th")
+        self.assertEqual(res.json()["translations"], {"ko": "[ko] รูปภาพ"})
 
     def test_leave_and_revive(self):
         self.assertEqual(self.cw.delete(f"/api/chat/rooms/{self.rid}/").status_code, 204)

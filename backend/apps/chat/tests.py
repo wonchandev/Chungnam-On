@@ -36,6 +36,13 @@ class ChatRestTest(TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertIsNone(res.json()["job"])
 
+    def test_detected_source_can_differ_from_senders_chat_language(self):
+        rid = self.open_room().json()["id"]
+        response = self.cw.post(f"/api/chat/rooms/{rid}/messages/", {"text": "안녕하세요"}, format="json")
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(response.json()["source_lang"], "ko")
+        self.assertEqual(response.json()["translations"], {})
+
     def test_messages_translated_unread_and_read(self):
         rid = self.open_room().json()["id"]
         res = self.cw.post(f"/api/chat/rooms/{rid}/messages/", {"text": "สวัสดีครับ"}, format="json")

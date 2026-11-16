@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import TranslateRequestSerializer, TranslateResponseSerializer
-from .services import translate_text
+from .services import detect_source_language, translate_text
 
 
 class TranslateTextView(APIView):
@@ -17,24 +17,29 @@ class TranslateTextView(APIView):
         ser = TranslateRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
+        if d["source"] == "auto":
+            d["source"] = detect_source_language(d["text"], fallback="auto")
         translated = translate_text(d["text"], d["source"], d["target"])
         return Response({**d, "translated_text": translated})
 
 
 # ───────── P1: 언어 목록 / 음성·사진 번역 / 표현집 / 언어 교육 ─────────
 from django.conf import settings  # noqa: E402
+from django.http import HttpResponse  # noqa: E402
 from django.shortcuts import get_object_or_404  # noqa: E402
 from drf_spectacular.types import OpenApiTypes  # noqa: E402
 from drf_spectacular.utils import OpenApiParameter  # noqa: E402
 from rest_framework import generics, status  # noqa: E402
 from rest_framework.parsers import FormParser, MultiPartParser  # noqa: E402
+from rest_framework.renderers import JSONRenderer  # noqa: E402
 
 from apps.core.exceptions import ServiceError  # noqa: E402
 from apps.core.i18n import get_request_language  # noqa: E402
 
-from . import google  # noqa: E402
+from . import audio, google, ocr  # noqa: E402
+from .services import translate_batch  # noqa: E402
 from .models import CourseEnrollment, LanguageCourse, Phrase  # noqa: E402
-from .serializers import CourseSerializer, ImageTranslateSerializer, VoiceTranslateSerializer  # noqa: E402
+from .serializers import CourseSerializer, ImageTranslateSerializer, TextToSpeechSerializer, VoiceTranslateSerializer  # noqa: E402
 
 LANGUAGE_NAMES = {
     "ko": ("한국어", "Korean"), "en": ("English", "English"), "vi": ("Tiếng Việt", "Vietnamese"),
@@ -59,7 +64,8 @@ MAX_UPLOAD = 10 * 1024 * 1024
 
 
 class VoiceTranslateView(APIView):
-    """음성 번역: 녹음 → 텍스트(STT) → 번역. Google Speech-to-Text 사용 (API 키 필요)."""
+    """음성 번역: 녹음 → 서버 변환(16kHz PCM) → 텍스트(STT) → 번역. Google Speech-to-Text 사용 (API 키 필요).
+    webm/ogg/m4a/mp3/wav 등 대부분 형식을 받고, 1분이 넘는 음성은 나눠서 인식한다(기본 5분·25MB 까지)."""
 
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
@@ -69,12 +75,30 @@ class VoiceTranslateView(APIView):
         ser = VoiceTranslateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
-        audio = d["audio"]
-        if audio.size > MAX_UPLOAD:
-            raise ServiceError("file_too_large", "10MB 이하의 파일만 가능합니다.", 413)
-        transcript = google.speech_to_text(audio.read(), d["source"], d["encoding"])
+        limit = audio.max_upload_bytes()
+        if d["audio"].size > limit:
+            raise ServiceError("file_too_large", f"{limit // (1024 * 1024)}MB 이하의 파일만 가능합니다.", 413)
+        transcript, duration = audio.transcribe(d["audio"].read(), d["source"], d["encoding"])
         translated = translate_text(transcript, d["source"], d["target"]) if transcript else ""
-        return Response({"transcript": transcript, "source": d["source"], "target": d["target"], "translated_text": translated})
+        return Response({"transcript": transcript, "source": d["source"], "target": d["target"], "translated_text": translated,
+                         "duration_seconds": duration})
+
+
+class TextToSpeechView(APIView):
+    """번역문을 재생할 수 있는 MP3 파일로 반환한다."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_content_negotiation(self, request, force=False):
+        # 성공 시 HttpResponse로 고정 MP3를 반환하고, DRF 오류는 JSON으로 렌더링한다.
+        renderer = JSONRenderer()
+        return renderer, renderer.media_type
+
+    @extend_schema(request=TextToSpeechSerializer, responses={(200, "audio/mpeg"): OpenApiTypes.BINARY})
+    def post(self, request):
+        serializer = TextToSpeechSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        audio_bytes = google.text_to_speech(**serializer.validated_data)
+        return HttpResponse(audio_bytes, content_type="audio/mpeg")
 
 
 class ImageTranslateView(APIView):
@@ -90,9 +114,16 @@ class ImageTranslateView(APIView):
         d = ser.validated_data
         if d["image"].size > MAX_UPLOAD:
             raise ServiceError("file_too_large", "10MB 이하의 파일만 가능합니다.", 413)
-        detected = google.image_to_text(d["image"].read())
-        translated = translate_text(detected, d["source"], d["target"]) if detected else ""
-        return Response({"detected_text": detected, "source": d["source"], "target": d["target"], "translated_text": translated})
+        ocr_result = ocr.parse_annotation(google.annotate_image(d["image"].read()))
+        detected, regions = ocr_result["text"], ocr_result["regions"]
+        # 전체 문장과 영역별 문장을 한 번에 묶어 번역한다 (캐시·중복 제거는 translate_batch 가 처리).
+        texts = [detected] + [r["text"] for r in regions]
+        translated = translate_batch(texts, d["source"], d["target"]) if detected else [""] * len(texts)
+        return Response({
+            "detected_text": detected, "source": d["source"], "target": d["target"], "translated_text": translated[0],
+            "image_width": ocr_result["image_width"], "image_height": ocr_result["image_height"],
+            "regions": [{**r, "translated_text": t} for r, t in zip(regions, translated[1:], strict=True)],
+        })
 
 
 class PhraseListView(APIView):

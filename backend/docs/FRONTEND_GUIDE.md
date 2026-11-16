@@ -45,15 +45,35 @@ React 프론트 팀원에게 전달하는 문서입니다. 상세 스키마는 *
 - 업종 코드: `manufacturing, construction, agriculture, logistics, retail, safety, food, etc`
 - 지역 코드: 천안 `44130`, 아산 `44200`, 당진 `44270` … (`GET /api/regions/`)
 
+### 사진·음성 번역 응답
+- **사진** `POST /api/translate/image/` (multipart `image`, `target`, `source`=auto 기본): 기존 `detected_text`·`translated_text`(전체 문장)에 더해 글자 영역별 결과를 줍니다.
+  ```json
+  {"detected_text": "...", "source": "auto", "target": "vi", "translated_text": "...",
+   "image_width": 800, "image_height": 600,
+   "regions": [{"text": "안전모 착용", "translated_text": "...", "language": "ko",
+                "box": {"x": 0, "y": 0, "width": 300, "height": 50},
+                "vertices": [{"x": 0, "y": 0}, {"x": 300, "y": 0}, {"x": 300, "y": 50}, {"x": 0, "y": 50}]}]}
+  ```
+  좌표는 업로드한 원본 이미지의 픽셀 기준입니다. 화면에 띄운 크기 ÷ `image_width`(`image_height`) 비율로 곱해 오버레이하세요. 기울어진 글자는 `vertices`(시계 방향 4점)를 쓰면 됩니다. 영역은 문단 단위이며 최대 100개입니다.
+- **음성** `POST /api/translate/voice/` (multipart `audio`, `source`, `target`): webm/ogg/m4a/mp3/wav 등 대부분 형식을 서버가 변환하므로 `encoding`은 보낼 필요가 없습니다. 기본 **5분·25MB**까지 가능하고, 응답에 `duration_seconds`(초)가 추가됩니다. 너무 길면 413 `audio_too_long`, 해석할 수 없는 파일은 400 `unsupported_audio`입니다.
+
+### 음성 합성과 실시간 번역
+
+- `POST /api/translate/tts/`에 `{"text":"Wear a hard hat.","language":"en"}`를 보냅니다. 지원 언어는 `ko`, `en`, `vi`, `th`, `zh`, `id`이고 `text`는 UTF-8 5,000바이트까지입니다. 응답 `audio/mpeg`를 Blob으로 읽어 재생할 수 있습니다.
+- 실시간 음성은 `ws://127.0.0.1:8000/ws/translate/voice/?token=<access>`로 접속합니다. `{"type":"start","source":"ko","target":"en"}`을 보내고 `ready`를 받은 다음, 16kHz 모노 PCM16 little-endian을 WAV 헤더 없이 바이너리 프레임으로 보냅니다. `ready`의 `max_frame_bytes`는 16,000, `max_audio_seconds`는 280입니다. 프레임을 녹음 속도에 맞춰 전송합니다.
+- `transcript`에는 `segment`, `text`, `is_final`이 있습니다. `is_final=false`는 인식 중 표시용이고, 확정 문장은 동일 `segment`의 `translation` 이벤트로 `translated_text`가 업데이트됩니다.
+- Claude가 번역한 이벤트에는 보정한 원문인 `corrected_text`가 추가됩니다. `text`에는 Google이 인식한 원문이 들어갑니다. 앞 문장의 번역을 기다리는 동안에도 새 자막이 도착할 수 있으므로 `segment`로 연결해 표시합니다.
+- 녹음이 끝나면 `{"type":"stop"}`을 보내고 남은 번역과 `complete`를 기다립니다. `error` 이벤트의 `code`로 실패를 표시할 수 있고, `segment`가 있는 오류는 해당 문장의 번역 실패입니다.
+
 ## 5. 채팅 (WebSocket)
 - 연결: `ws://127.0.0.1:8000/ws/chat/{room_id}/?token=<access>`
 - 보내기: `{"type":"message","text":"..."}` | `{"type":"read"}`
 - 받기: `message`(원문 + `translations: {언어: 번역문}`), `read`, `presence`(온라인 여부)
-- 번역 표시: 메시지에 번역이 언어별로 같이 오므로 내 언어 키를 골라 원문 아래에 표시
+- 번역 표시: 메시지의 `source_lang`은 감지한 발신 언어입니다. `translations`에서 내 언어 키를 골라 표시하고, 해당 키가 없으면 원문을 표시합니다.
 - 방 생성/이력/이미지 첨부는 REST, 실시간 텍스트 송수신은 WebSocket. WebSocket 이 안 될 때는 `POST .../messages/` 로도 전송 가능
 
 ## 6. 참고 / 제약
-- **번역**: `GOOGLE_TRANSLATE_API_KEY` 가 없으면 `[th] 원문` 형태의 가짜 번역이 나옵니다. 음성/사진 번역도 같은 키가 필요합니다
+- **번역**: 공고 등록·수정 응답은 번역 완료 전에 돌아옵니다. 번역이 준비될 때까지 공고 API는 원문을 반환합니다. 개발용 Echo 엔진에서는 `[th] 원문` 형태로 표시합니다. 음성/사진 번역에는 Google 키가 필요합니다.
 - **AI 챗봇 응답 추가 필드**(`done` 이벤트/JSON): `sources[{id,title,url}]` 출처 표기, `suggestions` 후속 질문 칩, `title` 대화 제목, `pii_masked`(여권·등록번호가 가려졌다는 안내용). 답변 👍/👎·신고는 `POST /api/assistant/messages/{message_id}/feedback/` `{rating:"up"|"down", reason, report}`, 대화 내보내기 `GET /api/assistant/conversations/{id}/export/`. 한도 초과는 429 `assistant_rate_limited`. 챗봇이 "지원할까요?"라고 되물으면 사용자 답변을 그대로 다시 보내면 됩니다
 - **AI 챗봇**: `OPENAI_API_KEY` 가 없으면 행정 가이드를 검색해 요약해 주는 간이 답변으로 동작합니다
 - **좌표**: 공고 등록 시 `lat`, `lng` 는 프론트(지도 SDK)가 구해서 보내야 합니다 (서버에 주소→좌표 변환 없음)
