@@ -43,6 +43,7 @@ class ComplaintTest(TestCase):
 
 class SearchGuidesTest(TestCase):
     def test_ranking(self):
+        AdminGuide.objects.all().delete()  # 시드 가이드 제외
         a = AdminGuide.objects.create(category="visa", title="비자 연장", summary="체류기간 연장", body="비자 연장은 출입국에서 합니다")
         b = AdminGuide.objects.create(category="insurance", title="건강보험", body="비자와 무관")
         AdminGuide.objects.create(category="etc", title="비공개 비자", body="비자", is_published=False)
@@ -56,6 +57,7 @@ class ChatbotTest(TestCase):
     def setUp(self):
         self.w = make_worker(lang="en")
         self.c = client_for(self.w)
+        AdminGuide.objects.all().delete()  # 시드 가이드 제외
         self.g = AdminGuide.objects.create(category="visa", title="비자 연장", summary="체류기간 연장 안내", body="출입국 사무소에서 신청")
 
     def test_fallback_without_key(self):
@@ -63,7 +65,7 @@ class ChatbotTest(TestCase):
         self.assertEqual(res.status_code, 200, res.content)
         d = res.json()
         self.assertIn("비자 연장", d["answer"])
-        self.assertEqual(d["sources"], [{"id": self.g.id, "title": "비자 연장"}])
+        self.assertEqual(d["sources"], [{"id": self.g.id, "title": "비자 연장", "url": ""}])
         # 대화 저장 + 이어가기
         self.assertEqual(Conversation.objects.get().turns.count(), 2)
         res2 = self.c.post("/api/assistant/chat/", {"message": "고마워", "conversation_id": d["conversation_id"]}, format="json")
@@ -79,7 +81,7 @@ class ChatbotTest(TestCase):
     def test_llm_stream_and_prompt(self):
         seen = {}
 
-        def fake(system, messages):
+        def fake(system, messages, **kw):
             seen["system"], seen["messages"] = system, messages
             yield "Go to "
             yield "the immigration office."
@@ -100,7 +102,7 @@ class ChatbotTest(TestCase):
     def test_history_passed_and_llm_failure(self):
         calls = []
 
-        def ok(system, messages):
+        def ok(system, messages, **kw):
             calls.append(messages)
             yield "ok"
 
@@ -109,7 +111,7 @@ class ChatbotTest(TestCase):
             self.c.post("/api/assistant/chat/", {"message": "두번째", "conversation_id": cid}, format="json")
         self.assertEqual([m["role"] for m in calls[1]], ["user", "assistant", "user"])
 
-        def boom(system, messages):
+        def boom(system, messages, **kw):
             raise RuntimeError("api down")
             yield  # pragma: no cover
 

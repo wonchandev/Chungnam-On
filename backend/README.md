@@ -37,6 +37,7 @@ python manage.py runserver
 | `GOOGLE_TTS_API_KEY` | Google Cloud Text-to-Speech 전용 키. 비우면 번역용 Google 키 사용 | 빈 값 |
 | `GOOGLE_TTS_USE_ADC` | 음성 합성 요청에 Google Application Default Credentials 사용 | `False` |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | AI 챗봇(OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변 | 빈 값 / `gpt-4o-mini` |
+| `OPENAI_EMBEDDING_MODEL` / `ASSISTANT_DAILY_LIMIT` | 가이드 임베딩 모델 / 사용자별 하루 챗봇 질문 한도 | `text-embedding-3-small` / `50` |
 | `EMAIL_BACKEND` | 인증번호·비밀번호 재설정 메일 (기본 콘솔 출력) | console |
 | `TRANSLATION_BACKEND` | (선택) 번역 엔진 클래스 경로. 키가 있으면 자동으로 `GoogleTranslator` | 자동 |
 | `TRANSLATION_CACHE_TTL_DAYS` | 번역 캐시 재사용 기간(일). `0`은 캐시 사용 중지 | 30 |
@@ -60,7 +61,7 @@ python manage.py runserver
 | 채팅 | `GET/POST /api/chat/rooms/` · `GET/DELETE /api/chat/rooms/{id}/` · `GET/POST .../messages/`(이미지 첨부) · `POST .../read/` · `PATCH .../translation/` · `GET .../call/` · `GET /api/chat/quick-replies/` |
 | 번역·언어 | `POST /api/translate/text/ voice/ image/ tts/` · `GET /api/languages/ phrases/` · `GET /api/courses/ courses/mine/` · `POST/DELETE /api/courses/{id}/enroll/` |
 | 행정관리 | `GET /api/admin-info/dashboard/ guides/ guides/{id}/ frequent/ popular/` · `GET/POST /api/admin-info/complaints/` |
-| AI 지원 | `POST /api/assistant/chat/`(SSE 스트리밍 지원) · `GET /api/assistant/conversations/` · `GET /api/assistant/documents/templates/` · `POST /api/assistant/documents/` |
+| AI 지원 | `POST /api/assistant/chat/`(SSE 스트리밍 지원) · `GET /api/assistant/conversations/` · `GET .../conversations/{id}/export/`(txt 내보내기) · `POST /api/assistant/messages/{id}/feedback/`(👍/👎·신고) · `GET /api/assistant/documents/templates/` · `POST /api/assistant/documents/` |
 | 커뮤니티 | `GET/POST /api/community/posts/` · `.../posts/{id}/ like/ comments/` · `DELETE /api/community/comments/{id}/` · `GET/POST /api/community/companions/` · `.../companions/{id}/ join/ participants/` |
 | 알림·안전 | `GET /api/notifications/ unread-count/` · `POST /api/notifications/read-all/ {id}/read/` · `POST /api/reports/` · `GET /api/blocks/` · `POST/DELETE /api/blocks/{user_id}/` |
 
@@ -105,6 +106,7 @@ python manage.py translate_jobs
 `python manage.py translate_jobs --once`는 현재 실행 가능한 작업을 처리하고 종료합니다. 한도나 공급자 설정을 바로잡은 뒤 `python manage.py translate_jobs --retry-failed --once`로 실패한 공고의 남은 번역을 다시 대기열에 등록하고 실행할 수 있습니다.
 
 ### AI 챗봇 / 음성·사진 번역
+- 챗봇 고도화: 행정 가이드 9건이 마이그레이션으로 시드됩니다(내용은 일반 안내이므로 admin 에서 검수·보강). 키가 있으면 `python manage.py index_guides` 로 문단 단위 임베딩 색인을 만들고(admin 에서 가이드를 저장해도 자동 색인), 이후 질의는 번역 없이 의미 검색합니다. 챗봇은 공고 검색·지원 현황·지원/관심 등록(사용자 확인 후)·급여 계산 도구를 호출하며, 응답에 출처·후속 질문·대화 제목·개인정보 마스킹 여부가 포함됩니다. 하루 질문 한도 초과 시 429 `assistant_rate_limited`.
 
 - 챗봇: `.env` 에 `OPENAI_API_KEY` 를 넣으면 OpenAI 모델이 행정 가이드(관리자 페이지에서 등록)를 근거로 답합니다. 키가 없으면 가이드 검색 결과를 요약해 보여주는 간이 모드로 동작합니다. 모델은 `OPENAI_MODEL` 로 변경합니다 (계정에서 사용 가능한 모델명으로).
 - 번역을 OpenAI 로 바꾸려면 `TRANSLATION_BACKEND=apps.translation.backends.OpenAITranslator` (모델 `OPENAI_TRANSLATE_MODEL`). 기본은 Google 번역이며, 음성/사진 번역(STT/OCR)은 항상 Google 키가 필요합니다.

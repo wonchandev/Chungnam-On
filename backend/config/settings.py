@@ -161,6 +161,9 @@ TRANSLATION_CACHE_TTL_DAYS = env.int("TRANSLATION_CACHE_TTL_DAYS", default=30)
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o-mini")
 OPENAI_TRANSLATE_MODEL = env("OPENAI_TRANSLATE_MODEL", default="gpt-4o-mini")
+OPENAI_EMBEDDING_MODEL = env("OPENAI_EMBEDDING_MODEL", default="text-embedding-3-small")
+ASSISTANT_DAILY_LIMIT = env.int("ASSISTANT_DAILY_LIMIT", default=50)  # 사용자당 하루 챗봇 질문 수
+ASSISTANT_MIN_SCORE = env.float("ASSISTANT_MIN_SCORE", default=0.3)  # 임베딩 검색 최소 유사도
 
 # 실시간 음성 번역의 Claude 문맥 보정
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")

@@ -100,8 +100,19 @@ class ChatTurn(models.Model):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="turns")
     role = models.CharField(max_length=10, choices=Role.choices)
     text = models.TextField()
-    sources = models.JSONField(default=list, blank=True, help_text="참고한 행정 가이드 [{id,title}]")
+    sources = models.JSONField(default=list, blank=True, help_text="참고한 행정 가이드 [{id,title,url}]")
+    feedback = models.CharField(max_length=5, blank=True, choices=[("up", "좋아요"), ("down", "별로예요")])
+    feedback_reason = models.CharField(max_length=300, blank=True)
+    reported = models.BooleanField("부적절 신고", default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["id"]
+
+
+class GuideChunk(models.Model):
+    """행정 가이드 문단 단위 색인 (임베딩 검색용). `manage.py index_guides` 또는 admin 저장 시 생성."""
+
+    guide = models.ForeignKey(AdminGuide, on_delete=models.CASCADE, related_name="chunks")
+    text = models.TextField()
+    embedding = models.JSONField(default=list)
