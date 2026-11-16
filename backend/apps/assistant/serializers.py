@@ -68,7 +68,7 @@ class AssistantChatRequestSerializer(serializers.Serializer):
 class ChatTurnSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatTurn
-        fields = ("id", "role", "text", "sources", "created_at")
+        fields = ("id", "role", "text", "sources", "feedback", "created_at")
 
 
 class ConversationSerializer(serializers.ModelSerializer):
@@ -80,3 +80,9 @@ class ConversationSerializer(serializers.ModelSerializer):
 class DocumentRequestSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=["visa_extension_reason", "employment_certificate_request", "absence_notice"])
     fields = serializers.DictField(child=serializers.CharField(allow_blank=True), help_text="템플릿별 입력값 (GET templates 참고)")
+
+
+class TurnFeedbackSerializer(serializers.Serializer):
+    rating = serializers.ChoiceField(choices=["up", "down"], required=False)
+    reason = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    report = serializers.BooleanField(required=False, help_text="true 면 부적절한 답변으로 신고")
