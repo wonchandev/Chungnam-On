@@ -117,10 +117,10 @@ from apps.core.i18n import get_request_language  # noqa: E402
 from apps.translation.services import translate_text  # noqa: E402
 
 from . import chatbot, documents  # noqa: E402
-from .models import Complaint, Conversation  # noqa: E402
+from .models import ChatTurn, Complaint, Conversation  # noqa: E402
 from .serializers import (  # noqa: E402
     AssistantChatRequestSerializer, ChatTurnSerializer, ComplaintSerializer, ConversationSerializer,
-    DocumentRequestSerializer,
+    DocumentRequestSerializer, TurnFeedbackSerializer,
 )
 
 
@@ -153,7 +153,8 @@ class ComplaintDetailView(generics.RetrieveAPIView):
 class AssistantChatView(APIView):
     """AI 챗봇 질의응답. 행정 가이드를 검색해 근거로 삼고, 요청 언어로 답한다.
     `stream=true` 면 SSE: `data: {"type":"delta","text":"..."}` … 마지막 `{"type":"done","conversation_id","message_id","sources"}`.
-    `stream=false` 면 JSON `{conversation_id, message_id, answer, sources}`."""
+    `stream=false` 면 JSON `{conversation_id, message_id, answer, sources, title, suggestions, pii_masked}`.
+    하루 질문 한도 초과 시 429 `assistant_rate_limited`."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -166,6 +167,7 @@ class AssistantChatView(APIView):
         if d.get("conversation_id"):
             conv = get_object_or_404(Conversation, pk=d["conversation_id"], user=request.user)
         lang = get_request_language(request)
+        chatbot.check_limit(request.user)
         events = chatbot.run(request.user, d["message"], lang, conv)
         if d["stream"]:
             resp = StreamingHttpResponse(chatbot.sse(events), content_type="text/event-stream")
@@ -183,7 +185,8 @@ class AssistantChatView(APIView):
         if error and not text:
             raise ServiceError("assistant_unavailable", error, 503)
         return Response({"conversation_id": done["conversation_id"], "message_id": done["message_id"],
-                         "answer": "".join(text), "sources": done["sources"]})
+                         "answer": "".join(text), "sources": done["sources"], "title": done["title"],
+                         "suggestions": done["suggestions"], "pii_masked": done["pii_masked"]})
 
 
 class ConversationListView(generics.ListAPIView):
@@ -213,6 +216,45 @@ class ConversationDetailView(APIView):
     def delete(self, request, pk):
         get_object_or_404(Conversation, pk=pk, user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ConversationExportView(APIView):
+    """대화 내보내기 (텍스트 파일 다운로드)"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=OpenApiTypes.BINARY)
+    def get(self, request, pk):
+        from django.http import HttpResponse
+
+        c = get_object_or_404(Conversation, pk=pk, user=request.user)
+        lines = [f"# {c.title}", ""]
+        for t in c.turns.all():
+            lines.append(f"[{'나' if t.role == 'user' else 'AI'}] {t.text}\n")
+        resp = HttpResponse("\n".join(lines), content_type="text/plain; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="conversation-{c.id}.txt"'
+        return resp
+
+
+class TurnFeedbackView(APIView):
+    """챗봇 답변 피드백(👍/👎 + 사유)과 부적절 답변 신고. 신고는 admin 의 '챗봇 답변' 화면에서 검토."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=TurnFeedbackSerializer, responses=OpenApiTypes.OBJECT)
+    def post(self, request, pk):
+        turn = get_object_or_404(ChatTurn, pk=pk, role=ChatTurn.Role.ASSISTANT, conversation__user=request.user)
+        ser = TurnFeedbackSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        if "rating" in d:
+            turn.feedback = d["rating"]
+        if "reason" in d:
+            turn.feedback_reason = d["reason"]
+        if d.get("report"):
+            turn.reported = True
+        turn.save(update_fields=["feedback", "feedback_reason", "reported"])
+        return Response({"id": turn.id, "feedback": turn.feedback, "feedback_reason": turn.feedback_reason, "reported": turn.reported})
 
 
 class DocumentTemplateListView(APIView):

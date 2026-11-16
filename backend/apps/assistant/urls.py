@@ -13,6 +13,8 @@ urlpatterns = [
     path("assistant/chat/", views.AssistantChatView.as_view(), name="assistant-chat"),
     path("assistant/conversations/", views.ConversationListView.as_view(), name="assistant-conversations"),
     path("assistant/conversations/<int:pk>/", views.ConversationDetailView.as_view(), name="assistant-conversation"),
+    path("assistant/conversations/<int:pk>/export/", views.ConversationExportView.as_view(), name="assistant-export"),
+    path("assistant/messages/<int:pk>/feedback/", views.TurnFeedbackView.as_view(), name="assistant-feedback"),
     path("assistant/documents/templates/", views.DocumentTemplateListView.as_view(), name="assistant-doc-templates"),
     path("assistant/documents/", views.DocumentDraftView.as_view(), name="assistant-doc-draft"),
 ]

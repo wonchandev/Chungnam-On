@@ -54,6 +54,7 @@ React 프론트 팀원에게 전달하는 문서입니다. 상세 스키마는 *
 
 ## 6. 참고 / 제약
 - **번역**: `GOOGLE_TRANSLATE_API_KEY` 가 없으면 `[th] 원문` 형태의 가짜 번역이 나옵니다. 음성/사진 번역도 같은 키가 필요합니다
+- **AI 챗봇 응답 추가 필드**(`done` 이벤트/JSON): `sources[{id,title,url}]` 출처 표기, `suggestions` 후속 질문 칩, `title` 대화 제목, `pii_masked`(여권·등록번호가 가려졌다는 안내용). 답변 👍/👎·신고는 `POST /api/assistant/messages/{message_id}/feedback/` `{rating:"up"|"down", reason, report}`, 대화 내보내기 `GET /api/assistant/conversations/{id}/export/`. 한도 초과는 429 `assistant_rate_limited`. 챗봇이 "지원할까요?"라고 되물으면 사용자 답변을 그대로 다시 보내면 됩니다
 - **AI 챗봇**: `OPENAI_API_KEY` 가 없으면 행정 가이드를 검색해 요약해 주는 간이 답변으로 동작합니다
 - **좌표**: 공고 등록 시 `lat`, `lng` 는 프론트(지도 SDK)가 구해서 보내야 합니다 (서버에 주소→좌표 변환 없음)
 - **행정 가이드**: 콘텐츠는 `/admin/` 에서 등록해야 목록이 채워집니다

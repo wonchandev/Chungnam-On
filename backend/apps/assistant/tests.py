@@ -6,6 +6,7 @@ from apps.core.testing import client_for, make_employer, make_job, make_worker
 
 class AdminInfoTest(TestCase):
     def setUp(self):
+        AdminGuide.objects.all().delete()  # 마이그레이션 시드 가이드 제외
         self.visa = AdminGuide.objects.create(category="visa", title="비자 연장 방법", summary="체류기간 연장", body="출입국사무소 방문")
         AdminGuideTranslation.objects.create(guide=self.visa, lang="en", title="How to extend your visa", body="Visit the office")
         self.ins = AdminGuide.objects.create(category="insurance", title="건강보험 가입", body="직장가입자 안내")
