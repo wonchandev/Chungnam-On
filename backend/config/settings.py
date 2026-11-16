@@ -146,6 +146,8 @@ DEFAULT_LANGUAGE = "ko"
 # 번역 엔진 (apps/translation/backends.py): Google Cloud Translation.
 # API 키가 없으면 개발용 EchoTranslator('[언어] 원문')로 동작합니다.
 GOOGLE_TRANSLATE_API_KEY = env("GOOGLE_TRANSLATE_API_KEY", default="")
+GOOGLE_TTS_API_KEY = env("GOOGLE_TTS_API_KEY", default="")
+GOOGLE_TTS_USE_ADC = env.bool("GOOGLE_TTS_USE_ADC", default=False)
 TRANSLATION_BACKEND = env(
     "TRANSLATION_BACKEND",
     default="apps.translation.backends.GoogleTranslator"
@@ -159,6 +161,11 @@ TRANSLATION_CACHE_TTL_DAYS = env.int("TRANSLATION_CACHE_TTL_DAYS", default=30)
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o-mini")
 OPENAI_TRANSLATE_MODEL = env("OPENAI_TRANSLATE_MODEL", default="gpt-4o-mini")
+
+# 실시간 음성 번역의 Claude 문맥 보정
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+ANTHROPIC_VOICE_MODEL = env("ANTHROPIC_VOICE_MODEL", default="claude-haiku-5-5")
+ANTHROPIC_WORKSPACE_ID = env("ANTHROPIC_WORKSPACE_ID", default="")
 
 # 이메일(인증번호/비밀번호 재설정): 기본은 콘솔 출력(개발용)
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")

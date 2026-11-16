@@ -1,6 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
 
+from .google import MAX_TTS_BYTES, TTS_LANG
 
 LANGUAGE_CHOICES = [(l, l) for l in settings.SUPPORTED_LANGUAGES]
 SOURCE_LANGUAGE_CHOICES = LANGUAGE_CHOICES + [("auto", "auto")]
@@ -28,6 +29,16 @@ class VoiceTranslateSerializer(serializers.Serializer):
     target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
     encoding = serializers.ChoiceField(choices=["WEBM_OPUS", "OGG_OPUS", "LINEAR16", "FLAC", "MP3"], default="WEBM_OPUS",
                                        help_text="서버 변환이 불가능할 때만 사용 (보통은 생략)")
+
+
+class TextToSpeechSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=MAX_TTS_BYTES, help_text="재생할 번역문 (UTF-8 5,000바이트 이하)")
+    language = serializers.ChoiceField(choices=list(TTS_LANG), help_text="번역문 언어")
+
+    def validate_text(self, value: str) -> str:
+        if len(value.encode("utf-8")) > MAX_TTS_BYTES:
+            raise serializers.ValidationError("UTF-8 기준 5,000바이트 이하의 문장을 입력해주세요.")
+        return value
 
 
 class ImageTranslateSerializer(serializers.Serializer):

@@ -58,7 +58,7 @@ def send_message(room: ChatRoom, sender, text: str = "", image=None) -> Message:
     source_lang = detect_source_language(text, fallback=me.language)
     msg = Message.objects.create(room=room, sender=sender, text=text, image=image, source_lang=source_lang)
     if text:
-        translated = translate_many(text, source_lang, [p.language for p in others])
+        translated = translate_many(text, source_lang, [p.language for p in others], chat=True)
         for lang, t in translated.items():
             MessageTranslation.objects.create(message=msg, lang=lang, text=t)
     now = timezone.now()

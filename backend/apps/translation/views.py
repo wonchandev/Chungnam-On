@@ -25,11 +25,13 @@ class TranslateTextView(APIView):
 
 # ───────── P1: 언어 목록 / 음성·사진 번역 / 표현집 / 언어 교육 ─────────
 from django.conf import settings  # noqa: E402
+from django.http import HttpResponse  # noqa: E402
 from django.shortcuts import get_object_or_404  # noqa: E402
 from drf_spectacular.types import OpenApiTypes  # noqa: E402
 from drf_spectacular.utils import OpenApiParameter  # noqa: E402
 from rest_framework import generics, status  # noqa: E402
 from rest_framework.parsers import FormParser, MultiPartParser  # noqa: E402
+from rest_framework.renderers import JSONRenderer  # noqa: E402
 
 from apps.core.exceptions import ServiceError  # noqa: E402
 from apps.core.i18n import get_request_language  # noqa: E402
@@ -37,7 +39,7 @@ from apps.core.i18n import get_request_language  # noqa: E402
 from . import audio, google, ocr  # noqa: E402
 from .services import translate_batch  # noqa: E402
 from .models import CourseEnrollment, LanguageCourse, Phrase  # noqa: E402
-from .serializers import CourseSerializer, ImageTranslateSerializer, VoiceTranslateSerializer  # noqa: E402
+from .serializers import CourseSerializer, ImageTranslateSerializer, TextToSpeechSerializer, VoiceTranslateSerializer  # noqa: E402
 
 LANGUAGE_NAMES = {
     "ko": ("한국어", "Korean"), "en": ("English", "English"), "vi": ("Tiếng Việt", "Vietnamese"),
@@ -80,6 +82,23 @@ class VoiceTranslateView(APIView):
         translated = translate_text(transcript, d["source"], d["target"]) if transcript else ""
         return Response({"transcript": transcript, "source": d["source"], "target": d["target"], "translated_text": translated,
                          "duration_seconds": duration})
+
+
+class TextToSpeechView(APIView):
+    """번역문을 재생할 수 있는 MP3 파일로 반환한다."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_content_negotiation(self, request, force=False):
+        # 성공 시 HttpResponse로 고정 MP3를 반환하고, DRF 오류는 JSON으로 렌더링한다.
+        renderer = JSONRenderer()
+        return renderer, renderer.media_type
+
+    @extend_schema(request=TextToSpeechSerializer, responses={(200, "audio/mpeg"): OpenApiTypes.BINARY})
+    def post(self, request):
+        serializer = TextToSpeechSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        audio_bytes = google.text_to_speech(**serializer.validated_data)
+        return HttpResponse(audio_bytes, content_type="audio/mpeg")
 
 
 class ImageTranslateView(APIView):

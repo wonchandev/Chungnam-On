@@ -8,6 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.module_loading import import_string
 
+from .chat_text import expand_abbreviations, mark_emoticons
 from .errors import TranslationProviderError
 from .glossary import mark_terms, restore_terms
 from .models import TranslationCache
@@ -35,12 +36,12 @@ def detect_source_language(text: str, fallback: str) -> str:
     return language if language in settings.SUPPORTED_LANGUAGES else fallback
 
 
-def translate_text(text: str, source: str, target: str) -> str:
+def translate_text(text: str, source: str, target: str, *, chat: bool = False) -> str:
     """번역 + DB 캐시. 같은 언어이거나 빈 문자열이면 원문을 그대로 반환."""
-    return translate_batch([text], source, target)[0]
+    return translate_batch([text], source, target, chat=chat)[0]
 
 
-def translate_batch(texts: list[str], source: str, target: str) -> list[str]:
+def translate_batch(texts: list[str], source: str, target: str, *, chat: bool = False) -> list[str]:
     """한 대상 언어로 묶어 번역한다. 빈 입력과 캐시가 있는 문장은 외부 요청에서 제외한다."""
     if source == target:
         return list(texts)
@@ -52,12 +53,17 @@ def translate_batch(texts: list[str], source: str, target: str) -> list[str]:
     backend = settings.TRANSLATION_BACKEND
     model = settings.OPENAI_TRANSLATE_MODEL if backend == "apps.translation.backends.OpenAITranslator" else None
     cache_days = settings.TRANSLATION_CACHE_TTL_DAYS
-    use_glossary = source in {"ko", "auto"} and backend != "apps.translation.backends.EchoTranslator"
+    is_echo = backend == "apps.translation.backends.EchoTranslator"
+    use_glossary = source in {"ko", "auto"} and not is_echo
     prepared = {}
     for text in unique_texts:
-        marked, terms = mark_terms(text, target) if use_glossary else (text, {})
-        glossary_input = [marked, terms] if terms else None
-        cache_input = json.dumps([CACHE_VERSION, backend, model, source, target, text, glossary_input], sort_keys=True)
+        provider_text = expand_abbreviations(text, source) if chat and not is_echo else text
+        marked, terms = mark_terms(provider_text, target) if use_glossary else (provider_text, {})
+        if chat and not is_echo:
+            marked, emoticons = mark_emoticons(marked)
+            terms.update(emoticons)
+        prepared_input = [marked, terms] if marked != text or terms else None
+        cache_input = json.dumps([CACHE_VERSION, backend, model, source, target, text, prepared_input], sort_keys=True)
         key = hashlib.sha256(cache_input.encode()).hexdigest()
         prepared[text] = (key, marked, terms)
 
@@ -92,14 +98,16 @@ def translate_batch(texts: list[str], source: str, target: str) -> list[str]:
     return [results.get(key, original) for original, key in zip(texts, normalized, strict=True)]
 
 
-def translate_many(text: str, source: str, targets) -> dict:
+def translate_many(text: str, source: str, targets, *, chat: bool = False) -> dict:
     """여러 언어로 번역. 실패한 언어는 건너뜀(원문 저장/전송을 막지 않기 위해)."""
+    if chat and not any(char.isalpha() for char in text):
+        return {}
     out = {}
     for target in set(targets):
         if target == source:
             continue
         try:
-            out[target] = translate_text(text, source, target)
+            out[target] = translate_text(text, source, target, chat=chat)
         except TranslationProviderError as error:
             logger.warning("Translation %s->%s failed (%s)", source, target, error.get_codes())
         except Exception:  # 외부 API 장애

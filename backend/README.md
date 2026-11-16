@@ -34,6 +34,8 @@ python manage.py runserver
 | `JWT_ACCESS_MINUTES` / `JWT_REFRESH_DAYS` | 토큰 만료 | 30분 / 7일 |
 | `REDIS_URL` | 채팅 채널 레이어·캐시(온라인 상태) 공유용. **운영 필수**, 로컬은 비워도 됨 | 메모리 |
 | `GOOGLE_TRANSLATE_API_KEY` | Google Cloud Translation API 키. 없으면 개발용 echo 번역(`[th] 원문`) | 빈 값 |
+| `GOOGLE_TTS_API_KEY` | Google Cloud Text-to-Speech 전용 키. 비우면 번역용 Google 키 사용 | 빈 값 |
+| `GOOGLE_TTS_USE_ADC` | 음성 합성 요청에 Google Application Default Credentials 사용 | `False` |
 | `OPENAI_API_KEY` / `OPENAI_MODEL` | AI 챗봇(OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변 | 빈 값 / `gpt-4o-mini` |
 | `EMAIL_BACKEND` | 인증번호·비밀번호 재설정 메일 (기본 콘솔 출력) | console |
 | `TRANSLATION_BACKEND` | (선택) 번역 엔진 클래스 경로. 키가 있으면 자동으로 `GoogleTranslator` | 자동 |
@@ -56,7 +58,7 @@ python manage.py runserver
 | 평판 | `POST /api/jobs/{id}/reviews/`(근무 완료 후) · `GET /api/users/{id}/reputation/` |
 | 지도 | `GET /api/jobs/map/` · `/api/jobs/map/clusters/` · `/api/jobs/nearby/` · `GET /api/jobs/?bbox=` · `GET /api/regions/ regions/search/` |
 | 채팅 | `GET/POST /api/chat/rooms/` · `GET/DELETE /api/chat/rooms/{id}/` · `GET/POST .../messages/`(이미지 첨부) · `POST .../read/` · `PATCH .../translation/` · `GET .../call/` · `GET /api/chat/quick-replies/` |
-| 번역·언어 | `POST /api/translate/text/ voice/ image/` · `GET /api/languages/ phrases/` · `GET /api/courses/ courses/mine/` · `POST/DELETE /api/courses/{id}/enroll/` |
+| 번역·언어 | `POST /api/translate/text/ voice/ image/ tts/` · `GET /api/languages/ phrases/` · `GET /api/courses/ courses/mine/` · `POST/DELETE /api/courses/{id}/enroll/` |
 | 행정관리 | `GET /api/admin-info/dashboard/ guides/ guides/{id}/ frequent/ popular/` · `GET/POST /api/admin-info/complaints/` |
 | AI 지원 | `POST /api/assistant/chat/`(SSE 스트리밍 지원) · `GET /api/assistant/conversations/` · `GET /api/assistant/documents/templates/` · `POST /api/assistant/documents/` |
 | 커뮤니티 | `GET/POST /api/community/posts/` · `.../posts/{id}/ like/ comments/` · `DELETE /api/community/comments/{id}/` · `GET/POST /api/community/companions/` · `.../companions/{id}/ join/ participants/` |
@@ -108,6 +110,15 @@ python manage.py translate_jobs
 - 번역을 OpenAI 로 바꾸려면 `TRANSLATION_BACKEND=apps.translation.backends.OpenAITranslator` (모델 `OPENAI_TRANSLATE_MODEL`). 기본은 Google 번역이며, 음성/사진 번역(STT/OCR)은 항상 Google 키가 필요합니다.
 - 음성/사진 번역은 번역과 같은 `GOOGLE_TRANSLATE_API_KEY` 를 쓰며, GCP 에서 **Speech-to-Text API**, **Cloud Vision API** 도 사용 설정해야 합니다.
 - 이메일 인증/비밀번호 재설정 메일은 기본적으로 콘솔에 출력됩니다. `DEBUG=True` 일 때는 응답에 `dev_code` 가 포함되어 프론트 개발 시 메일 없이 테스트할 수 있습니다. SMS 는 미연동(로그만).
+
+### 번역 P2
+
+- `python manage.py compare_translation_engines`는 Google과 OpenAI에 같은 한국어 현장 문장 4개를 보내 영어 번역, 참고 번역, 수치·용어 검사 결과와 응답 시간을 JSON으로 출력합니다. 키를 설정한 엔진을 비교하며 `--provider google` 또는 `--provider openai`로 한쪽만 실행할 수 있습니다.
+- `python manage.py pretranslate_phrases --target en --target vi`는 현장 표현집과 채팅 빠른 답장의 번역 캐시를 미리 채웁니다. 언어 지정을 생략하면 지원하는 모든 대상 언어를 준비합니다. API 조회는 기존 번역 캐시에서 결과를 읽고, 만료 정책도 동일하게 적용됩니다.
+- 채팅 원문은 그대로 저장합니다. 번역 요청에 쓰는 텍스트에서 `ㅇㅋ`, `ㄳ`, `ㅋㅋ`, `ASAP`, `THX` 등의 독립된 약어를 풀고, 이모지와 `:)` 같은 이모티콘을 번역문에 보존합니다.
+- `POST /api/translate/tts/`는 `text`와 `language`를 받아 MP3 (`audio/mpeg`)를 반환합니다. Google 프로젝트에서 **Cloud Text-to-Speech API**를 사용 설정하고 키의 허용 API에 추가합니다. 별도 키는 `GOOGLE_TTS_API_KEY`에 넣을 수 있습니다. Google Application Default Credentials를 설정한 환경은 `GOOGLE_TTS_USE_ADC=True`로 합성 요청을 인증합니다. [Google 인증 설정](https://docs.cloud.google.com/text-to-speech/docs/authentication)
+- `ws/translate/voice/`는 기존 JWT와 Speech-to-Text 키로 연결합니다. 마이크의 PCM 프레임을 보내면 인식 중 텍스트와 확정 문장별 번역을 받습니다. 자세한 메시지 형식은 [프론트엔드 API 가이드](docs/FRONTEND_GUIDE.md#음성-합성과-실시간-번역)를 참고하세요.
+- `ANTHROPIC_API_KEY`를 설정하면 실시간 음성의 확정 문장과 같은 연결에서 인식한 직전 두 문장을 Claude에 보내 문맥 보정과 번역을 수행합니다. 응답 제한 시간은 확정 원문 길이에 따라 3~15초입니다. 키가 비어 있거나 호출에 실패하면 기본 번역 엔진을 사용합니다.
 
 ### 정기 작업
 
