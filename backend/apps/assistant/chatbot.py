@@ -40,7 +40,13 @@ About the user: {profile}
 
 
 def tokens(text: str) -> list[str]:
-    return [t for t in re.findall(r"[\w가-힣]+", text.lower()) if len(t) >= 2]
+    out = []
+    for t in re.findall(r"[\w가-힣]+", text.lower()):
+        if len(t) >= 2:
+            out.append(t)
+        if len(t) >= 3 and re.match(r"[가-힣]", t):
+            out.append(t[:2])  # 조사·어미가 붙은 한국어 대응 (임금을 → 임금)
+    return list(dict.fromkeys(out))
 
 
 def search_guides(query_ko: str, k: int = TOP_K) -> list[AdminGuide]:
