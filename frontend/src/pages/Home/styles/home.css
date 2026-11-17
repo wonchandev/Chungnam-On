@@ -1,5 +1,11 @@
 .home-page { min-width: 0; padding: clamp(24px, 4vw, 48px); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; }
 .home-title { margin: 0 0 16px; }
+.home-account { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px; margin-bottom: 24px; border-radius: 16px; background: var(--color-brand-light); }
+.home-account strong { color: var(--color-text-brand); font-size: 17px; }
+.home-account p { margin-top: 6px; font-size: 14px; }
+.home-account-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.home-account a, .home-account button { display: inline-block; padding: 10px 14px; border: 1px solid var(--color-brand-main); border-radius: 10px; text-decoration: none; color: var(--color-brand-main); background: white; font-weight: 600; }
+.home-account-actions a:first-child { background: var(--color-brand-main); color: white; }
 .home-page button, .home-dialog button { cursor: pointer; }
 .home-page button:disabled, .home-dialog button:disabled { cursor: wait; opacity: .6; }
 .home-page :is(button, select, input, a):focus-visible, .home-dialog :is(button, input, a):focus-visible { outline: 3px solid var(--color-brand-main); outline-offset: 3px; }
