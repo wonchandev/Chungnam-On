@@ -9,6 +9,7 @@ import GuideDialog from './components/GuideDialog.jsx'
 import ComplaintList from './components/ComplaintList.jsx'
 import ComplaintDialog from './components/ComplaintDialog.jsx'
 import Notifications from './components/Notifications.jsx'
+import AssistantWidget from './chatbot/AssistantWidget.jsx'
 import './administration.css'
 
 const tabs = [{ id: 'dashboard', label: '대시보드' }, { id: 'frequent', label: '자주 찾는' }, { id: 'popular', label: '최근 인기' }, { id: 'complaints', label: '민원' }]
@@ -48,5 +49,6 @@ export default function AdministrationPage() {
     {guideId && <GuideDialog key={guideId} id={guideId} onClose={() => setGuideId(null)} />}
     {session && complaint && <ComplaintDialog key={complaint.id || 'create'} id={complaint.id} onClose={() => setComplaint(null)} onSaved={id => { setRevision(value => value + 1); setNotice('문의가 접수되었습니다. 민원 탭에서 처리 상태를 확인할 수 있어요.'); setComplaint({ id }) }} />}
     {loginOpen && <LoginDialog message="내 민원과 알림을 확인하려면 로그인해 주세요." onClose={() => { setLoginOpen(false); setPending(null) }} onLogin={tokens => { login(tokens); setLoginOpen(false); if (pending) setComplaint(pending); setPending(null) }} />}
+    <AssistantWidget onGuide={setGuideId} />
   </div>
 }

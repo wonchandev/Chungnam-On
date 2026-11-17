@@ -1,6 +1,6 @@
 # 행정관리
 
-`/administration`은 공유된 화면을 참고해 대시보드, 분야별 안내, 자주 찾는 정보, 최근 인기, 내 민원과 알림을 구성한다. 챗봇과 AI 서류 초안 API는 호출하지 않는다.
+`/administration`은 공유된 화면을 참고해 대시보드, 분야별 안내, 자주 찾는 정보, 최근 인기, 내 민원과 알림을 구성한다. 오른쪽 하단의 원형 AI 버튼은 생활·행정 상담창을 연다. AI 서류 초안 API는 호출하지 않는다.
 
 ## 연결 API
 
@@ -15,6 +15,9 @@
 | 민원 접수·상세 | `POST /api/admin-info/complaints/`, `GET /api/admin-info/complaints/{id}/` |
 | 알림 목록·안 읽은 수 | `GET /api/notifications/`, `GET /api/notifications/unread-count/` |
 | 알림 읽음·모두 읽음 | `POST /api/notifications/{id}/read/`, `POST /api/notifications/read-all/` |
+| AI 상담 | `POST /api/assistant/chat/` (`stream: false`, JSON 답변) |
+| 이전 대화 | `GET /api/assistant/conversations/`, `GET /api/assistant/conversations/{id}/` |
+| 답변 도움 여부 | `POST /api/assistant/messages/{id}/feedback/` |
 
 ## 동작
 
@@ -26,6 +29,9 @@
 - 알림은 사용자가 읽음 처리를 할 수 있고, 민원 답변 알림에서 관련 문의 상세를 열 수 있다.
 - 목록은 API 데이터를 사용한다. 데모·빈 응답을 임의의 신청 내역으로 채우지 않는다.
 - `useAdminResource`는 요청 변경 시 이전 결과를 감추고, 중단된 요청이 새 필터의 결과를 덮어쓰지 않도록 처리한다.
+- AI 상담은 로그인 후 이용한다. 창을 닫았다 열어도 현재 대화가 유지되며, 페이지를 다시 방문하면 이전 대화에서 이어갈 수 있다. 출처를 선택하면 기존 행정 안내 상세를 연다.
+- 질문은 최대 2,000자이며 Enter로 전송하고 Shift+Enter로 줄바꿈한다. 답변 대기 중 중복 전송을 막고, 서버의 일일 한도(429)와 인증 오류를 표시한다. 실패한 질문은 자동 재전송하지 않는다.
+- 백엔드에 `OPENAI_API_KEY`가 없으면 등록된 가이드를 검색한 간단한 안내를 반환한다. 프론트에서 AI 답변을 임의로 생성하지 않는다. 피드백은 백엔드에 저장한다.
 
 ## 확인
 
