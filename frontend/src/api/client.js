@@ -12,7 +12,7 @@ export class ApiError extends Error {
 
 // accessToken is supplied by the shared login flow; public home requests also
 // work without it. Keep credentials and external-service keys on the backend.
-export async function apiRequest(path, { signal, language = 'ko', accessToken, refreshToken, onRefresh, query = {}, baseUrl = configuredBase, method = 'GET', body } = {}) {
+export async function apiRequest(path, { signal, language = 'ko', accessToken, refreshToken, onRefresh, query = {}, baseUrl = configuredBase, method = 'GET', body, responseType = 'json' } = {}) {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined && value !== null && value !== '') params.set(key, String(value))
@@ -20,24 +20,26 @@ export async function apiRequest(path, { signal, language = 'ko', accessToken, r
   const suffix = params.size ? `?${params}` : ''
   const headers = { Accept: 'application/json', 'Accept-Language': language }
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const multipart = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json'
 
   const response = await fetch(`${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}${suffix}`, {
     headers,
     signal,
     method,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
   })
   if (response.status === 401 && refreshToken) {
     const tokens = await apiRequest('auth/refresh/', { method: 'POST', body: { refresh: refreshToken }, baseUrl, signal })
     const next = { access: tokens.access, refresh: tokens.refresh || refreshToken }
     try {
-      return await apiRequest(path, { signal, language, accessToken: next.access, query, baseUrl, method, body })
+      return await apiRequest(path, { signal, language, accessToken: next.access, query, baseUrl, method, body, responseType })
     } finally {
       onRefresh?.(next)
     }
   }
   if (response.status === 204) return null
+  if (response.ok && responseType === 'blob') return response.blob()
   const isJson = response.headers.get('content-type')?.includes('application/json')
   const data = isJson ? await response.json() : null
   if (!response.ok) {

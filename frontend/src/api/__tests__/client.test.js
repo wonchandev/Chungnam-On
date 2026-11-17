@@ -57,3 +57,31 @@ test('propagates cancellation when navigating away', async () => {
   globalThis.fetch = async (url, options) => { options.signal.throwIfAborted() }
   await assert.rejects(apiGet('jobs/', { signal: controller.signal }), { name: 'AbortError' })
 })
+
+test('uploads multipart media without overriding its boundary and preserves it on token refresh', async () => {
+  const body = new FormData()
+  body.set('image', new Blob(['image-data'], { type: 'image/png' }), 'photo.png')
+  body.set('target', 'vi')
+  let uploads = 0
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('auth/refresh/')) return json({ access: 'fresh' })
+    uploads++
+    assert.equal(options.body, body)
+    assert.equal(options.headers['Content-Type'], undefined)
+    return uploads === 1 ? json({ message: 'expired' }, 401) : json({ translated_text: 'result' })
+  }
+  assert.deepEqual(await apiRequest('translate/image/', { method: 'POST', body, accessToken: 'expired', refreshToken: 'refresh' }), { translated_text: 'result' })
+  assert.equal(uploads, 2)
+})
+
+test('returns TTS audio after token refresh while keeping JSON provider errors readable', async () => {
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith('auth/refresh/')) return json({ access: 'fresh' })
+    return options.headers.Authorization === 'Bearer fresh' ? new Response('mp3-bytes', { headers: { 'content-type': 'audio/mpeg' } }) : json({ message: 'expired' }, 401)
+  }
+  const result = await apiRequest('translate/tts/', { method: 'POST', body: { text: 'hello', language: 'en' }, responseType: 'blob', accessToken: 'old', refreshToken: 'refresh' })
+  assert.equal(result.type, 'audio/mpeg')
+  assert.equal(await result.text(), 'mp3-bytes')
+  globalThis.fetch = async () => json({ code: 'tts_unavailable', message: '음성 서비스를 사용할 수 없습니다.' }, 503)
+  await assert.rejects(apiRequest('translate/tts/', { responseType: 'blob' }), error => error.code === 'tts_unavailable')
+})

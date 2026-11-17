@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
 
-export default function HomeDialog({ title, onClose, children, wide = false }) {
+export default function HomeDialog({ title, onClose, children, wide = false, className = '' }) {
   const ref = useRef(null)
   const titleId = useId()
   useEffect(() => {
@@ -10,7 +10,7 @@ export default function HomeDialog({ title, onClose, children, wide = false }) {
     dialog.showModal()
     return () => { dialog.close(); previous?.focus() }
   }, [])
-  return <dialog ref={ref} aria-labelledby={titleId} className={`home-dialog${wide ? ' home-detail-dialog' : ''}`} onCancel={onClose} onClick={(event) => {
+  return <dialog ref={ref} aria-labelledby={titleId} className={`home-dialog${wide ? ' home-detail-dialog' : ''} ${className}`} onCancel={onClose} onClick={(event) => {
     const rect = event.currentTarget.getBoundingClientRect()
     if (event.target === event.currentTarget && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) onClose()
   }}>
