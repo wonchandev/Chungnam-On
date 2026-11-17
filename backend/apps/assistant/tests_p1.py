@@ -93,7 +93,7 @@ class ChatbotTest(TestCase):
         events = [json.loads(l[6:]) for l in body.strip().split("\n\n")]
         self.assertEqual([e["type"] for e in events], ["delta", "delta", "done"])
         self.assertEqual(events[-1]["sources"][0]["id"], self.g.id)
-        self.assertIn("Answer in the user's language: en", seen["system"])
+        self.assertIn("Reply ONLY in English (code: en)", seen["system"])
         self.assertIn("출입국 사무소에서 신청", seen["system"])  # RAG 문맥 주입
         self.assertEqual(seen["messages"][-1], {"role": "user", "content": "비자 연장 어떻게 해요?"})
         self.assertEqual(ChatTurn.objects.filter(role="assistant").get().text, "Go to the immigration office.")

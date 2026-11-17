@@ -14,6 +14,10 @@ from .models import AdminGuide, ChatTurn, Conversation
 
 logger = logging.getLogger(__name__)
 
+LANGUAGE_NAMES = {
+    "ko": "Korean", "en": "English", "vi": "Vietnamese", "th": "Thai", "zh": "Simplified Chinese",
+    "uz": "Uzbek", "km": "Khmer", "ne": "Nepali", "id": "Indonesian", "mn": "Mongolian",
+}
 HISTORY_TURNS = 10
 HISTORY_CHARS = 6000  # 대화 이력 글자 수 예산 (컨텍스트 길이 관리)
 TOP_K = 4
@@ -22,7 +26,7 @@ SYSTEM_PROMPT = """You are the assistant of "충남온 (Chungnam-On)", a service
 You help with administrative and daily-life questions (visa and stay, health insurance, labor and wages, life in Korea) and can use tools to search jobs, check the user's applications, apply to / bookmark jobs, and estimate pay.
 
 Rules:
-- Answer in the user's language: {language}. Keep answers short, plain and practical, with steps when helpful.
+- Reply ONLY in {language_name} (code: {language}), even if the user writes in another language or the guides and tool results are in Korean. Translate job titles, company names and guide content into that language (keep numbers and proper nouns recognizable). Keep answers short, plain and practical, with steps when helpful.
 - Base your answer on the guides in <guides> when relevant. If they do not cover the question, say you are not sure and point to an official channel instead of guessing.
 - Never invent laws, fees, deadlines, office names or phone numbers. Rules change, so tell the user to confirm with an official source for anything legal or time-sensitive.
 - Visa/stay: HiKorea (https://www.hikorea.go.kr) and the Korea Immigration Contact Center (1345). Labor/wage problems: Ministry of Employment and Labor counseling (1350). Urgent danger or injury: 119; crime: 112.
@@ -86,7 +90,7 @@ def build_system(language: str, hits: list[tuple[AdminGuide, str]], user=None) -
         f"[{g.id}] {_clean(text)[:1500]}" + (f"\n(source: {g.source_url})" if g.source_url else "") for g, text in hits
     )
     profile = build_profile(user) if user else "unknown"
-    return SYSTEM_PROMPT.format(language=language, context=ctx or "(no matching guide found)", profile=profile)
+    return SYSTEM_PROMPT.format(language=language, language_name=LANGUAGE_NAMES.get(language, language), context=ctx or "(no matching guide found)", profile=profile)
 
 
 def mask_pii(text: str) -> tuple[str, bool]:

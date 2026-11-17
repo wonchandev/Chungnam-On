@@ -13,6 +13,7 @@ from .models import AdminGuide, GuideChunk
 logger = logging.getLogger(__name__)
 TOP_K = 4
 CHUNK_CHARS = 500
+RELATIVE_MARGIN = 0.05
 
 
 def split_chunks(guide: AdminGuide) -> list[str]:
@@ -50,7 +51,10 @@ def semantic_search(query: str, k: int = TOP_K) -> list[tuple[AdminGuide, str]]:
     qv = llm.embed([query])[0]
     chunks = GuideChunk.objects.filter(guide__is_published=True).select_related("guide")
     scored = sorted(((_cos(qv, c.embedding), c) for c in chunks), key=lambda x: -x[0])
-    return [(c.guide, c.text) for s, c in scored[:k] if s >= settings.ASSISTANT_MIN_SCORE]
+    if not scored:
+        return []
+    floor = max(settings.ASSISTANT_MIN_SCORE, scored[0][0] - RELATIVE_MARGIN)  # 1위와 비슷한 점수만 남김
+    return [(c.guide, c.text) for s, c in scored[:k] if s >= floor]
 
 
 def retrieve(query: str, language: str) -> list[tuple[AdminGuide, str]]:

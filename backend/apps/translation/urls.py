@@ -7,6 +7,7 @@ urlpatterns = [
     path("translate/voice/", views.VoiceTranslateView.as_view(), name="translate-voice"),
     path("translate/tts/", views.TextToSpeechView.as_view(), name="translate-tts"),
     path("translate/image/", views.ImageTranslateView.as_view(), name="translate-image"),
+    path("features/", views.FeatureListView.as_view(), name="features"),
     path("languages/", views.LanguageListView.as_view(), name="language-list"),
     path("phrases/", views.PhraseListView.as_view(), name="phrase-list"),
     path("courses/", views.CourseListView.as_view(), name="course-list"),

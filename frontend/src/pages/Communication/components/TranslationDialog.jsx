@@ -5,7 +5,7 @@ import FormSelect from '../../../components/FormSelect.jsx'
 import { communicationRequest, errorMessage } from '../api.js'
 
 const titles = { text: '텍스트 번역', voice: '음성 번역', image: '사진 번역' }
-export default function TranslationDialog({ mode, languages, onClose }) {
+export default function TranslationDialog({ mode, languages, tts, onClose }) {
   const [source, setSource] = useState(mode === 'voice' ? 'ko' : 'auto')
   const [target, setTarget] = useState('vi')
   const [text, setText] = useState('')
@@ -91,7 +91,7 @@ export default function TranslationDialog({ mode, languages, onClose }) {
         {(result.transcript || result.detected_text) && <><h3>인식한 원문</h3><p>{result.transcript || result.detected_text}</p></>}
         <h3>번역 결과</h3><p>{result.translated_text || '인식된 내용이 없습니다. 다른 파일로 시도해 주세요.'}</p>
         {!!result.regions?.length && <details><summary>글자 영역별 결과</summary>{result.regions.map((region, index) => <p key={index}>{region.text} → {region.translated_text}</p>)}</details>}
-        {result.translated_text && <button className="comm-secondary" type="button" onClick={speak} disabled={speaking}><Volume2 size={17} />{speaking ? '음성 준비 중…' : '번역문 듣기'}</button>}
+        {tts && result.translated_text && <button className="comm-secondary" type="button" onClick={speak} disabled={speaking}><Volume2 size={17} />{speaking ? '음성 준비 중…' : '번역문 듣기'}</button>}
         {audioUrl && <audio src={audioUrl} controls autoPlay aria-label="번역문 음성" />}
       </div>}
     </form>
