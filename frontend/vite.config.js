@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const proxy = {
     '/api': { target, changeOrigin: true },
     '/media': { target, changeOrigin: true },
+    '/ws': { target, changeOrigin: true, ws: true },
   }
   return { plugins: [react()], server: { proxy }, preview: { proxy } }
 })
