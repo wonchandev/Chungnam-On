@@ -102,6 +102,13 @@
 .comm-live-results { display: grid; gap: 12px; }
 .comm-live-results > div { padding: 16px; background: #eef4ed; border-radius: 12px; }
 .comm-live-results strong { display: block; margin-top: 7px; color: var(--color-brand-main); }
+.home-dialog.comm-live-dialog { width: min(720px, calc(100% - 32px)); height: min(760px, calc(100dvh - 48px)); max-height: calc(100dvh - 48px); padding: clamp(20px, 4vw, 32px); }
+.comm-live-dialog[open] { display: flex; flex-direction: column; }
+.comm-live-dialog > .home-dialog-heading { flex-shrink: 0; }
+.comm-live-dialog > .comm-dialog-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.comm-live-dialog .comm-language-pair { flex-shrink: 0; }
+.comm-live-dialog .comm-live-results { flex: 1; min-height: 180px; overflow-y: auto; align-content: start; padding: 18px; border: 1px solid var(--color-border); border-radius: 14px; background: #f7faf6; }
+.comm-live-placeholder { align-self: center; text-align: center; font-size: 14px; }
 .comm-page :is(button, a):focus-visible, .comm-dialog-content :is(button, textarea, input):focus-visible, .comm-chat :is(button, input, a):focus-visible { outline: 2px solid var(--color-brand-main); outline-offset: 3px; }
 .comm-page button:disabled, .comm-dialog-content button:disabled, .comm-chat button:disabled { opacity: .5; cursor: wait; }
 @media (max-width: 600px) {

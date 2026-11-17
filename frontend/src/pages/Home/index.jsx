@@ -8,7 +8,6 @@ import HomeFeed from './components/HomeFeed.jsx'
 import HomeMenuDialog from './components/HomeMenuDialog.jsx'
 import DetailDialog from './components/DetailDialog.jsx'
 import LoginDialog from './components/LoginDialog.jsx'
-import HomeAccount from './components/HomeAccount.jsx'
 import './styles/home.css'
 
 export default function HomePage() {
@@ -34,7 +33,6 @@ export default function HomePage() {
   return (
     <div className="home-page">
       <h1 className="home-title">홈</h1>
-      <HomeAccount session={session} onRefresh={saveSession} onLogin={() => setLoginOpen(true)} />
       <HomeToolbar
         region={region}
         regions={regions}

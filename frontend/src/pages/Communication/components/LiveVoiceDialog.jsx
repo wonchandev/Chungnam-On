@@ -75,12 +75,12 @@ export default function LiveVoiceDialog({ languages, onClose }) {
     } catch (failure) { releaseAudio(); if (alive.current) { setError(failure.message); setStatus('idle') } }
   }
   const options = languages.map(language => ({ value: language.code, label: language.native_name }))
-  return <HomeDialog title="AI 실시간 현장 통역" onClose={onClose} wide><div className="comm-dialog-content">
+  return <HomeDialog title="AI 실시간 현장 통역" onClose={onClose} wide className="comm-live-dialog"><div className="comm-dialog-content">
     <p>마이크로 말하면 문장별 원문과 번역을 보여드려요. 한 번에 최대 약 4분 30초까지 이용할 수 있어요.</p>
     <fieldset disabled={status !== 'idle'} className="comm-language-pair"><FormSelect label="말하는 언어" name="source" value={source} onChange={event => setSource(event.target.value)} options={options} /><FormSelect label="번역 언어" name="target" value={target} onChange={event => setTarget(event.target.value)} options={options} /></fieldset>
     <button className={`comm-record ${status === 'recording' ? 'is-recording' : ''}`} onClick={status === 'recording' ? stop : start} disabled={status === 'connecting' || status === 'finishing' || !languages.length}>{status === 'recording' ? <Square size={20} /> : <Mic size={20} />}{status === 'recording' ? '통역 종료' : status === 'connecting' ? '연결 중…' : status === 'finishing' ? '마지막 문장 번역 중…' : '통역 시작'}</button>
     {status === 'recording' && <p role="status">듣고 있어요. 마이크에 가까이 말씀해 주세요.</p>}
     {error && <p className="comm-error" role="alert">{error}</p>}
-    <div className="comm-live-results" aria-live="polite">{Object.entries(segments).map(([id, segment]) => <div key={id}><p>{segment.corrected_text || segment.text}</p>{segment.translated_text && <strong>{segment.translated_text}</strong>}</div>)}</div>
+    <div className="comm-live-results" aria-live="polite">{!Object.keys(segments).length && <p className="comm-live-placeholder">통역을 시작하면 이곳에 원문과 번역이 표시됩니다.</p>}{Object.entries(segments).map(([id, segment]) => <div key={id}><p>{segment.corrected_text || segment.text}</p>{segment.translated_text && <strong>{segment.translated_text}</strong>}</div>)}</div>
   </div></HomeDialog>
 }
