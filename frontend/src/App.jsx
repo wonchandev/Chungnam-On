@@ -5,6 +5,7 @@ import CommunicationPage from './pages/Communication'
 import AdministrationPage from './pages/Administration'
 import NearbyJobsPage from './pages/NearbyJobs'
 import JobsPage from './pages/Jobs'
+import AuthPage from './pages/Auth'
 
 function Layout() {
   return (
@@ -20,6 +21,8 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        <Route path="login" element={<AuthPage mode="login" />} />
+        <Route path="signup" element={<AuthPage mode="signup" />} />
         <Route index element={<HomePage />} />
         <Route path="communication" element={<CommunicationPage />} />
         <Route path="administration" element={<AdministrationPage />} />
