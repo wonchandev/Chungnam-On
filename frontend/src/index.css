@@ -37,6 +37,17 @@ a { color: inherit; }
 button, input, textarea, select { font: inherit; }
 .site-header { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; padding: 20px clamp(20px, 5vw, 72px); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
 .brand { color: var(--color-brand-main); font-size: 24px; font-weight: 800; text-decoration: none; }
+.header-auth { margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.header-auth a { padding: 10px 12px; border-radius: 10px; text-decoration: none; color: var(--color-brand-main); font-size: 14px; font-weight: 600; }
+.header-auth a:hover { background: var(--color-brand-light); }
+.header-auth .header-signup { background: var(--color-brand-main); color: white; }
+.header-auth .header-signup:hover { background: var(--color-text-brand); }
+.header-auth button { padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-brand-main); cursor: pointer; }
+.header-session { color: var(--color-text-secondary); font-size: 13px; }
+@media (max-width: 767px) {
+  .site-header { gap: 8px; padding: 16px; }
+  .header-auth a { padding: 10px; }
+}
 .navigation { display: flex; flex-wrap: wrap; gap: 8px; }
 .navigation a { padding: 10px 14px; border-radius: 8px; text-decoration: none; }
 .navigation a:hover { background: var(--color-brand-light); }
