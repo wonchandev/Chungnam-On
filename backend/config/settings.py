@@ -1,5 +1,6 @@
 """충남온 Django settings. 환경별 값은 .env 로 관리합니다 (.env.example 참고)."""
 from datetime import timedelta
+import sys
 from pathlib import Path
 
 import environ
@@ -154,6 +155,7 @@ TRANSLATION_BACKEND = env(
     if GOOGLE_TRANSLATE_API_KEY
     else "apps.translation.backends.EchoTranslator",
 )
+MYMEMORY_EMAIL = env("MYMEMORY_EMAIL", default="")  # 선택: 넣으면 MyMemory 무료 한도 증가
 TRANSLATION_CACHE_TTL_DAYS = env.int("TRANSLATION_CACHE_TTL_DAYS", default=30)
 
 # AI 행정·생활 챗봇 (OpenAI). 키가 없으면 행정 가이드 검색 기반 간이 답변으로 동작.
@@ -199,3 +201,7 @@ SPECTACULAR_SETTINGS = {
         "GuideCategoryEnum": "apps.assistant.models.AdminGuide.Category",
     },
 }
+
+if "test" in sys.argv:  # 테스트는 .env 의 실제 키와 무관하게 외부 호출 없이 실행 (키가 필요한 테스트는 override_settings 사용)
+    TRANSLATION_BACKEND = "apps.translation.backends.EchoTranslator"
+    OPENAI_API_KEY = GOOGLE_TRANSLATE_API_KEY = GOOGLE_TTS_API_KEY = ANTHROPIC_API_KEY = ""

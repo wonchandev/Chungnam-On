@@ -73,6 +73,7 @@ React 프론트 팀원에게 전달하는 문서입니다. 상세 스키마는 *
 - 방 생성/이력/이미지 첨부는 REST, 실시간 텍스트 송수신은 WebSocket. WebSocket 이 안 될 때는 `POST .../messages/` 로도 전송 가능
 
 ## 6. 참고 / 제약
+- **기능 가용 여부**: `GET /api/features/` → `{voice_translate, image_translate, live_voice, tts, ai_chat}`. 키가 없는 환경(무료 번역 MyMemory 사용 시)에서는 음성·사진 번역, 실시간 통역, 번역문 듣기가 `false` 이므로 해당 버튼을 숨기세요 (다국어 소통 화면은 적용됨)
 - **번역**: 공고 등록·수정 응답은 번역 완료 전에 돌아옵니다. 번역이 준비될 때까지 공고 API는 원문을 반환합니다. 개발용 Echo 엔진에서는 `[th] 원문` 형태로 표시합니다. 음성/사진 번역에는 Google 키가 필요합니다.
 - **AI 챗봇 응답 추가 필드**(`done` 이벤트/JSON): `sources[{id,title,url}]` 출처 표기, `suggestions` 후속 질문 칩, `title` 대화 제목, `pii_masked`(여권·등록번호가 가려졌다는 안내용). 답변 👍/👎·신고는 `POST /api/assistant/messages/{message_id}/feedback/` `{rating:"up"|"down", reason, report}`, 대화 내보내기 `GET /api/assistant/conversations/{id}/export/`. 한도 초과는 429 `assistant_rate_limited`. 챗봇이 "지원할까요?"라고 되물으면 사용자 답변을 그대로 다시 보내면 됩니다
 - **AI 챗봇**: `OPENAI_API_KEY` 가 없으면 행정 가이드를 검색해 요약해 주는 간이 답변으로 동작합니다

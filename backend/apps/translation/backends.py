@@ -114,6 +114,76 @@ class GoogleTranslator(BaseTranslator):
             raise TranslationProviderError("translation_invalid_response") from error
 
 
+class MyMemoryTranslator(BaseTranslator):
+    """MyMemory 무료 번역 API (키 불필요) — 해커톤/테스트용.
+    익명 하루 약 5,000자, MYMEMORY_EMAIL 을 .env 에 넣으면 하루 약 50,000자. 요청당 500바이트 제한이라 문장 단위로 나눠 보낸다.
+    품질은 Google/OpenAI 보다 낮다. 사용: TRANSLATION_BACKEND=apps.translation.backends.MyMemoryTranslator"""
+
+    ENDPOINT = "https://api.mymemory.translated.net/get"
+    CODE_MAP = {"zh": "zh-CN"}
+    MAX_BYTES = 450
+    TIMEOUT = 10
+
+    def __init__(self):
+        from django.conf import settings
+
+        self.email = getattr(settings, "MYMEMORY_EMAIL", "")
+
+    def translate(self, text: str, source: str, target: str) -> str:
+        if source == "auto":
+            source = "ko"  # MyMemory 는 자동 감지를 지원하지 않음 → 서비스 원문 언어(한국어)로 가정
+        pair = f"{self.CODE_MAP.get(source, source)}|{self.CODE_MAP.get(target, target)}"
+        out = []
+        for line in text.split("\n"):
+            out.append(" ".join(self._call(chunk, pair) for chunk in self._chunks(line)) if line.strip() else line)
+        return "\n".join(out)
+
+    def _chunks(self, line: str) -> list[str]:
+        """문장 단위로 묶어 MAX_BYTES 이하로 나눈다 (문장이 더 길면 글자 단위로 자른다)."""
+        pieces = []
+        for sent in re.split(r"(?<=[.!?。？！])\s+", line.strip()):
+            while len(sent.encode()) > self.MAX_BYTES:
+                cut = len(sent) // 2
+                while len(sent[:cut].encode()) > self.MAX_BYTES:
+                    cut -= 1
+                pieces.append(sent[:cut])
+                sent = sent[cut:]
+            if sent:
+                pieces.append(sent)
+        chunks, cur = [], ""
+        for p in pieces:
+            if cur and len((cur + " " + p).encode()) > self.MAX_BYTES:
+                chunks.append(cur)
+                cur = p
+            else:
+                cur = f"{cur} {p}".strip()
+        return chunks + ([cur] if cur else [])
+
+    def _call(self, text: str, pair: str) -> str:
+        params = {"q": text, "langpair": pair}
+        if self.email:
+            params["de"] = self.email
+        req = urllib.request.Request(f"{self.ENDPOINT}?{urllib.parse.urlencode(params)}")
+        try:
+            with urllib.request.urlopen(req, timeout=self.TIMEOUT) as res:
+                data = json.load(res)
+        except urllib.error.HTTPError as error:
+            raise classify_http_error(error.code, [], None) from error
+        except (TimeoutError, urllib.error.URLError, OSError) as error:
+            raise TranslationProviderError("translation_unavailable") from error
+        except ValueError as error:
+            raise TranslationProviderError("translation_invalid_response") from error
+        status = int(data.get("responseStatus") or 0)
+        if status == 429 or data.get("quotaFinished"):
+            raise TranslationProviderError("translation_quota_exhausted")
+        if status != 200:
+            raise TranslationProviderError("translation_provider_error")
+        translated = (data.get("responseData") or {}).get("translatedText")
+        if not isinstance(translated, str) or not translated:
+            raise TranslationProviderError("translation_invalid_response")
+        return translated
+
+
 class OpenAITranslator(BaseTranslator):
     """OpenAI 번역 (문맥·어조 반영). .env 의 OPENAI_API_KEY 필요, TRANSLATION_BACKEND 로 선택:
     TRANSLATION_BACKEND=apps.translation.backends.OpenAITranslator"""

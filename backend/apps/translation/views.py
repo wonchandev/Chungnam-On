@@ -205,3 +205,20 @@ class MyCourseListView(generics.ListAPIView):
         if getattr(self, "swagger_fake_view", False):
             return LanguageCourse.objects.none()
         return LanguageCourse.objects.filter(enrollments__user=self.request.user).prefetch_related("enrollments")
+
+
+class FeatureListView(APIView):
+    """API 키가 필요한 기능의 사용 가능 여부. 프론트는 false 인 기능의 버튼을 숨긴다."""
+
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        google = bool(settings.GOOGLE_TRANSLATE_API_KEY)
+        return Response({
+            "voice_translate": google,  # Google Speech-to-Text
+            "image_translate": google,  # Google Vision
+            "live_voice": google,  # Google 스트리밍 음성 인식
+            "tts": bool(settings.GOOGLE_TTS_USE_ADC or settings.GOOGLE_TTS_API_KEY or google),
+            "ai_chat": bool(settings.OPENAI_API_KEY),  # false 면 가이드 검색 기반 간이 답변
+        })
