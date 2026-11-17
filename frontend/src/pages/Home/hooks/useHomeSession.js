@@ -1,19 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { apiRequest } from '../../../api/client.js'
-
-const STORAGE_KEY = 'chungnam-home-session'
-
-function readSession() {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null') } catch { return null }
-}
+import { getSession, subscribeSession, saveSession } from '../../../api/session.js'
 
 export default function useHomeSession() {
-  const [session, setSession] = useState(readSession)
+  const session = useSyncExternalStore(subscribeSession, getSession)
   const [notice, setNotice] = useState('')
-  const saveSession = useCallback((tokens) => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(tokens))
-    setSession(tokens)
-  }, [])
 
   function login(tokens) {
     saveSession(tokens)
@@ -21,11 +12,12 @@ export default function useHomeSession() {
   }
 
   async function logout() {
+    if (!window.confirm('로그아웃하시겠습니까?')) return false
     try { await apiRequest('auth/logout/', { method: 'POST', accessToken: session.access, body: { refresh: session.refresh } }) }
     catch { /* Expired sessions must still be removable locally. */ }
-    sessionStorage.removeItem(STORAGE_KEY)
-    setSession(null)
+    saveSession(null)
     setNotice('로그아웃했어요.')
+    return true
   }
 
   return { session, saveSession, notice, login, logout }
