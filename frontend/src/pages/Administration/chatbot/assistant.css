@@ -3,7 +3,7 @@
 .admin-page .assistant-launcher-button { position: relative; display: grid; place-items: center; width: 62px; height: 62px; border: 1px solid #ffffff66; border-radius: 50%; background: linear-gradient(145deg, #3b7864, #23564d); color: white; box-shadow: 0 7px 24px #23564d35; cursor: pointer; transition: transform .15s, box-shadow .15s; }
 .admin-page .assistant-launcher-button:hover { transform: translateY(-3px); box-shadow: 0 10px 26px #23564d4d; }
 .assistant-launcher-button > span { position: absolute; top: -3px; right: -3px; display: grid; place-items: center; width: 23px; height: 23px; border: 2px solid white; border-radius: 50%; background: #dcebdc; color: #38634e; font-size: 9px; font-weight: 800; }
-.home-dialog.assistant-panel { position: fixed; inset: auto 28px 104px auto; margin: 0; width: min(440px, calc(100vw - 32px)); height: min(740px, calc(100dvh - 136px)); max-height: calc(100dvh - 136px); padding: 0; overflow: hidden; border: 1px solid #d3e2d8; border-radius: 24px; background: #f8faf6; box-shadow: 0 18px 70px #143c2b30; }
+.home-dialog.assistant-panel { position: fixed; inset: 0; margin: auto; width: min(760px, calc(100vw - 48px)); height: min(840px, calc(100dvh - 64px)); max-height: calc(100dvh - 64px); padding: 0; overflow: hidden; border: 1px solid #d3e2d8; border-radius: 24px; background: #f8faf6; box-shadow: 0 18px 70px #143c2b30; }
 .assistant-panel[open] { display: flex; flex-direction: column; }
 .assistant-panel::backdrop { background: #163e2d26; }
 .assistant-panel > .home-dialog-heading { flex-shrink: 0; padding: 21px 20px 10px; margin: 0; background: #2c5e50; color: white; }
@@ -16,7 +16,7 @@
 .assistant-toolbar { display: flex; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 10px 16px; border-bottom: 1px solid #e4ece1; background: white; }
 .assistant-toolbar button { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 6px 8px; border: 0; border-radius: 9px; color: #587a67; background: transparent; font-size: 11px; }
 .assistant-toolbar button:hover, .assistant-toolbar button[aria-pressed="true"] { background: #edf4e9; }
-.assistant-scroll { flex: 1; min-height: 0; padding: 18px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.assistant-scroll { flex: 1; min-height: 0; padding: 24px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .assistant-scroll::-webkit-scrollbar { display: none; }
 .assistant-welcome { display: grid; justify-items: center; padding: 12px 0 0; text-align: center; }
 .assistant-welcome-avatar { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 12px; border: 4px solid #edf4e8; border-radius: 21px; background: #d9e8d5; color: #3d7156; box-shadow: 0 4px 14px #23564d0a; }
@@ -33,7 +33,7 @@
 .assistant-message-avatar { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 10px; color: #4a775b; background: #dfead8; }
 .assistant-message-content { max-width: calc(100% - 35px); min-width: 0; }
 .assistant-message-bubble { padding: 13px 14px; border: 1px solid #e3eadf; border-radius: 3px 16px 16px 16px; background: white; }
-.assistant-message-bubble p { font-size: 12px; line-height: 1.9; color: #4c6050; white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistant-message-bubble p { font-size: 14px; line-height: 1.9; color: #4c6050; white-space: pre-wrap; overflow-wrap: anywhere; }
 .assistant-message.is-user { justify-content: flex-end; }
 .is-user .assistant-message-content { max-width: 86%; }
 .is-user .assistant-message-bubble { border-color: #d8e8d3; border-radius: 16px 3px 16px 16px; background: #deecd7; }
@@ -78,13 +78,13 @@
   .assistant-launcher { right: 20px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   .assistant-launcher-label { display: none; }
   .admin-page .assistant-launcher-button { width: 56px; height: 56px; }
-  .home-dialog.assistant-panel { inset: auto 12px calc(96px + env(safe-area-inset-bottom, 0px)) auto; width: calc(100vw - 24px); height: min(700px, calc(100dvh - 124px - env(safe-area-inset-bottom, 0px))); max-height: calc(100dvh - 124px - env(safe-area-inset-bottom, 0px)); border-radius: 21px; }
+  .home-dialog.assistant-panel { inset: 0; margin: auto; width: calc(100vw - 24px); height: min(820px, calc(100dvh - 32px - env(safe-area-inset-bottom, 0px))); max-height: calc(100dvh - 32px - env(safe-area-inset-bottom, 0px)); border-radius: 21px; }
   .assistant-scroll { padding: 16px; }
   .assistant-welcome { padding-top: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .assistant-dots { animation: none; } .admin-page .assistant-launcher-button { transition: none; } }
 @media (max-height: 560px) {
-  .home-dialog.assistant-panel { inset: 12px 12px auto auto; height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); }
+  .home-dialog.assistant-panel { inset: 0; margin: auto; height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); }
   .assistant-panel > .home-dialog-heading { padding: 12px 16px; }
   .assistant-intro-line, .assistant-composer > p, .assistant-character-count { display: none; }
   .assistant-composer { padding: 10px 12px; }

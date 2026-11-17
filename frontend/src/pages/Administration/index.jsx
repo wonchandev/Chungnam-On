@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Plus } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import useHomeSession from '../Home/hooks/useHomeSession.js'
 import LoginDialog from '../Home/components/LoginDialog.jsx'
 import Dashboard from './components/Dashboard.jsx'
@@ -38,7 +37,7 @@ export default function AdministrationPage() {
     setComplaint({ create: true })
   }
   return <div className="admin-page">
-    <header className="admin-page-heading"><Link to="/" aria-label="홈으로 이동"><ArrowLeft size={21} /></Link><h1>행정관리</h1><Notifications session={session} onLogin={() => { setPending(null); setLoginOpen(true) }} onComplaint={openComplaint} /></header>
+    <header className="admin-page-heading"><button type="button" className="admin-back" aria-label="행정관리 대시보드로 돌아가기" onClick={() => { setView('dashboard'); setFilters({}); setNotice('') }}><ArrowLeft size={21} /></button><h1>행정관리</h1><Notifications session={session} onLogin={() => { setPending(null); setLoginOpen(true) }} onComplaint={openComplaint} /></header>
     <nav className="admin-tabs" aria-label="행정관리 메뉴">{tabs.map(tab => <button key={tab.id} aria-pressed={view === tab.id} onClick={() => { setView(tab.id); setNotice('') }}>{tab.label}</button>)}</nav>
     {notice && <p className="admin-success" role="status">{notice}</p>}
     {view === 'dashboard' && <Dashboard session={session} onBrowse={browse} onOpenGuide={setGuideId} onOpenComplaint={openComplaint} onLogin={() => { setPending(null); setLoginOpen(true) }} revision={revision} />}
