@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { LogOut, UserRound, UserRoundPen } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import useHomeSession from '../../pages/Home/hooks/useHomeSession.js'
-import ProfileDialog from './ProfileDialog.jsx'
 import './account.css'
 
 export default function AccountMenu() {
   const { logout } = useHomeSession()
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
   const root = useRef(null)
   const trigger = useRef(null)
   useEffect(() => {
@@ -21,9 +20,8 @@ export default function AccountMenu() {
   }}>
     <button ref={trigger} className="account-trigger" type="button" aria-label="내 계정" aria-expanded={open} aria-controls="account-options" onClick={() => setOpen(value => !value)}><UserRound size={21} aria-hidden="true" /></button>
     {open && <div id="account-options" className="account-options">
-      <button type="button" onClick={() => { setOpen(false); setEditing(true) }}><UserRoundPen size={18} aria-hidden="true" />정보 수정</button>
+      <Link to="/mypage" onClick={() => setOpen(false)}><UserRoundPen size={18} aria-hidden="true" />마이페이지</Link>
       <button type="button" onClick={async () => { if (await logout()) setOpen(false) }}><LogOut size={18} aria-hidden="true" />로그아웃</button>
     </div>}
-    {editing && <ProfileDialog onClose={() => setEditing(false)} />}
   </div>
 }
