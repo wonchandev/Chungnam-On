@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Search,
   User,
@@ -9,10 +11,12 @@ import {
   Sprout,
   Truck,
 } from 'lucide-react'
+import JobList from './JobList.jsx'
+import JobDetail from './JobDetail.jsx'
 import './jobs.css'
 
 const QUICK_MENUS = [
-  { label: '일자리 찾기', icon: Search },
+  { label: '일자리 찾기', icon: Search, list: true },
   { label: '내 구직활동', icon: User },
   { label: '인력사무소', icon: Building2 },
   { label: '관심 공고', icon: Crown },
@@ -26,6 +30,21 @@ const POPULAR_CATEGORIES = [
 ]
 
 export default function JobsPage() {
+  const [params, setParams] = useSearchParams()
+  const [keyword, setKeyword] = useState('')
+
+  const id = params.get('id')
+  const category = params.get('category')
+  const q = params.get('q')
+
+  if (id) return <JobDetail id={id} />
+  if (category || q || params.has('list')) return <JobList category={category} q={q} />
+
+  const search = (e) => {
+    e.preventDefault()
+    setParams(keyword.trim() ? { q: keyword.trim() } : { list: '1' })
+  }
+
   return (
     <div className="jobs-page">
       <div className="jobs-hero">
@@ -37,14 +56,24 @@ export default function JobsPage() {
         </p>
       </div>
 
-      <label className="jobs-search">
+      <form className="jobs-search" onSubmit={search}>
         <Search size={16} aria-hidden="true" />
-        <input type="text" aria-label="일자리 검색" />
-      </label>
+        <input
+          type="text"
+          aria-label="일자리 검색"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
+      </form>
 
       <div className="jobs-quick">
-        {QUICK_MENUS.map(({ label, icon: Icon }) => (
-          <button key={label} type="button" className="jobs-quick-item">
+        {QUICK_MENUS.map(({ label, icon: Icon, list }) => (
+          <button
+            key={label}
+            type="button"
+            className="jobs-quick-item"
+            onClick={list ? () => setParams({ list: '1' }) : undefined}
+          >
             <Icon size={22} aria-hidden="true" />
             <span>{label}</span>
           </button>
@@ -70,7 +99,7 @@ export default function JobsPage() {
             key={code}
             type="button"
             className="jobs-popular-item"
-            data-category={code}
+            onClick={() => setParams({ category: code })}
           >
             <Icon size={24} aria-hidden="true" />
             <span>{label}</span>
