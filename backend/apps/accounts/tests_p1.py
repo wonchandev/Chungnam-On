@@ -117,3 +117,36 @@ class SettingsTest(TestCase):
         c.patch("/api/auth/me/", {"email_verified": True}, format="json")
         w.refresh_from_db()
         self.assertFalse(w.email_verified)
+
+
+class MyPageProfileTest(TestCase):
+    def test_worker_profile_roundtrip_and_isolation(self):
+        worker = make_worker("profile-worker")
+        client = client_for(worker)
+        payload = {"experience_years": 3, "experience_note": "현장 보조 경력", "available_categories": ["construction"], "available_weekdays": "0,2,4", "desired_regions": ["44130"], "can_night_shift": True}
+        response = client.patch("/api/me/worker-profile/", payload, format="json")
+        self.assertEqual(response.status_code, 200)
+        saved = client.get("/api/me/worker-profile/").json()
+        for name, value in payload.items():
+            self.assertEqual(saved[name], value)
+        other = client_for(make_worker("profile-other")).get("/api/me/worker-profile/").json()
+        self.assertEqual(other["experience_years"], 0)
+        self.assertEqual(other["available_categories"], [])
+
+    def test_worker_profile_permissions_and_validation(self):
+        self.assertEqual(client_for().get("/api/me/worker-profile/").status_code, 401)
+        self.assertEqual(client_for(make_employer()).get("/api/me/worker-profile/").status_code, 403)
+        client = client_for(make_worker())
+        self.assertEqual(client.patch("/api/me/worker-profile/", {"available_weekdays": "7"}, format="json").status_code, 400)
+        self.assertEqual(client.patch("/api/me/worker-profile/", {"desired_regions": ["not-a-region"]}, format="json").status_code, 400)
+
+    def test_profile_cannot_change_role_or_reputation(self):
+        worker = make_worker()
+        response = client_for(worker).patch("/api/auth/me/", {"name": "새 이름", "username": "changed", "role": "employer", "temperature": 99.9, "review_count": 100}, format="json")
+        self.assertEqual(response.status_code, 200)
+        worker.refresh_from_db()
+        self.assertEqual(worker.name, "새 이름")
+        self.assertEqual(worker.username, "worker1")
+        self.assertEqual(worker.role, "worker")
+        self.assertEqual(worker.temperature, 36.5)
+        self.assertEqual(worker.review_count, 0)
