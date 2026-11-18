@@ -23,6 +23,22 @@ const TAGS = [
   { key: 'night_shift', label: '야간근무' },
 ]
 
+const CATEGORY_OPTIONS = [
+  { code: 'manufacturing', label: '제조·생산' },
+  { code: 'construction', label: '건설현장' },
+  { code: 'agriculture', label: '농업·축산' },
+  { code: 'logistics', label: '물류·배송' },
+  { code: 'retail', label: '매장관리 및 판매' },
+  { code: 'safety', label: '안전·경비' },
+  { code: 'food', label: '음식·서비스' },
+]
+
+const PERIOD_OPTIONS = [
+  { code: 'one_day', label: '1일' },
+  { code: 'short', label: '단기' },
+  { code: 'mid', label: '중기' },
+  { code: 'long', label: '장기' },
+]
 const manwon = (n) => `${Math.round(n / 1000) / 10}만`
 
 export default function NearbyJobsPage() {
@@ -34,6 +50,7 @@ export default function NearbyJobsPage() {
   const [view, setView] = useState(null)
   const [urgent, setUrgent] = useState(false)
   const [category, setCategory] = useState('')
+  const [period, setPeriod] = useState('')
   const [tags, setTags] = useState([])
   const [data, setData] = useState(null)
   const [showList, setShowList] = useState(false)
@@ -44,11 +61,12 @@ export default function NearbyJobsPage() {
     () => ({
       urgent: urgent || undefined,
       category,
+      period: period || undefined,
       ...Object.fromEntries(tags.map((t) => [t, true])),
     }),
-    [urgent, category, tags],
+    [urgent, category, period, tags],
   )
-
+  
   // 지도 만들기 (한 번만)
   useEffect(() => {
     const map = L.map(elRef.current, { zoomControl: false }).setView(CENTER, 9)
@@ -125,8 +143,8 @@ export default function NearbyJobsPage() {
           icon: L.divIcon({
             className: 'nm-wrap',
             html: `<div class="nm-pin${item.is_urgent ? ' urgent' : ''}">${manwon(item.pay_amount)}</div>`,
-            iconSize: [64, 28],
-            iconAnchor: [32, 14],
+            iconSize: [60, 36],
+            iconAnchor: [30, 36],
           }),
         })
           .on('click', () => navigate(`/jobs?id=${item.id}`))
