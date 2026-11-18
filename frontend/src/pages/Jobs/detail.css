@@ -1,0 +1,50 @@
+.jd-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jd-star {
+  border: 0;
+  background: transparent;
+  color: var(--color-popup);
+  cursor: pointer;
+}
+
+.jd-star.on {
+  color: var(--color-brand-sub);
+}
+
+.jd-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.jd-btn {
+  flex: 1;
+  height: 48px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--color-brand-main);
+  color: var(--color-surface);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jd-btn.ghost {
+  border: 1.5px solid var(--color-brand-main);
+  background: var(--color-surface);
+  color: var(--color-brand-main);
+}
+
+.jd-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.jd-notice {
+  margin-top: 16px;
+  color: var(--color-warning);
+}
