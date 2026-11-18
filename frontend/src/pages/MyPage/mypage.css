@@ -45,6 +45,13 @@
 .my-file-field input { width: 100%; min-width: 0; padding: 6px; border: 1px solid #d5dfcd; border-radius: 11px; color: #9ba98e; font-size: 11px; }
 .my-file-field input::file-selector-button { min-height: 35px; border: 0; border-radius: 8px; padding: 8px 12px; margin-right: 12px; background: #e7efdf; color: #6e8a5d; font: inherit; cursor: pointer; }
 .my-file-field small, .my-help { color: #a1ae94; font-size: 11px; line-height: 1.7; }
+.my-photo-preview { display: flex; align-items: center; gap: 18px; padding: 18px; border: 1px solid #e1e9d8; border-radius: 15px; background: #f8faf4; }
+.my-photo-preview-avatar { display: grid; place-items: center; flex-shrink: 0; width: 88px; height: 88px; overflow: hidden; border: 3px solid white; border-radius: 50%; background: #e8f0df; color: #80996b; }
+.my-photo-preview-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.my-photo-preview > div { min-width: 0; }
+.my-photo-preview strong { color: #6c885b; font-size: 13px; }
+.my-photo-preview p { margin-top: 5px; font-size: 11px; color: #96a588; }
+.my-photo-preview .my-secondary { margin-top: 10px; min-height: 32px; padding: 7px 10px; font-size: 11px; }
 .my-primary, .my-secondary { display: inline-flex; justify-content: center; align-items: center; gap: 7px; min-height: 42px; padding: 11px 17px; border: 0; border-radius: 11px; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; }
 .my-primary { background: var(--color-brand-main); color: white; }
 .my-secondary { background: #ebf1e4; color: #6b875b; }

@@ -2,13 +2,37 @@ import { useEffect, useRef, useState } from 'react'
 import { LogOut, UserRound, UserRoundPen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import useHomeSession from '../../pages/Home/hooks/useHomeSession.js'
+import { apiRequest } from '../../api/client.js'
+import { getSession, saveSession } from '../../api/session.js'
 import './account.css'
 
 export default function AccountMenu() {
   const { logout } = useHomeSession()
   const [open, setOpen] = useState(false)
+  const [profile, setProfile] = useState(null)
+  const [failedPhoto, setFailedPhoto] = useState('')
   const root = useRef(null)
   const trigger = useRef(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    let version = 0
+    async function load() {
+      const tokens = getSession()
+      if (!tokens) return
+      const requested = ++version
+      try {
+        const user = await apiRequest('auth/me/', { signal: controller.signal, accessToken: tokens.access, refreshToken: tokens.refresh, onRefresh: saveSession })
+        if (!controller.signal.aborted && requested === version) setProfile(user)
+      } catch { /* Keep the account menu usable when profile loading fails. */ }
+    }
+    function updated(event) {
+      if (event.detail?.profile) { version++; setProfile(event.detail.profile) }
+      else load()
+    }
+    window.addEventListener('profile-updated', updated)
+    load()
+    return () => { controller.abort(); window.removeEventListener('profile-updated', updated) }
+  }, [])
   useEffect(() => {
     if (!open) return
     function outside(event) { if (!root.current?.contains(event.target)) setOpen(false) }
@@ -18,7 +42,7 @@ export default function AccountMenu() {
   return <div className="account-menu" ref={root} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }} onKeyDown={event => {
     if (event.key === 'Escape') { setOpen(false); trigger.current?.focus() }
   }}>
-    <button ref={trigger} className="account-trigger" type="button" aria-label="내 계정" aria-expanded={open} aria-controls="account-options" onClick={() => setOpen(value => !value)}><UserRound size={21} aria-hidden="true" /></button>
+    <button ref={trigger} className="account-trigger" type="button" aria-label="내 계정" aria-expanded={open} aria-controls="account-options" onClick={() => setOpen(value => !value)}>{profile?.profile_image && failedPhoto !== profile.profile_image ? <img src={profile.profile_image} alt="" onError={() => setFailedPhoto(profile.profile_image)} /> : <UserRound size={21} aria-hidden="true" />}</button>
     {open && <div id="account-options" className="account-options">
       <Link to="/mypage" onClick={() => setOpen(false)}><UserRoundPen size={18} aria-hidden="true" />마이페이지</Link>
       <button type="button" onClick={async () => { if (await logout()) setOpen(false) }}><LogOut size={18} aria-hidden="true" />로그아웃</button>
