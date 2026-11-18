@@ -98,11 +98,17 @@ class NotificationReadView(generics.GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ReportCreateView(generics.CreateAPIView):
-    """신고 접수 (대상 유형: job/user/post/comment/room/message). 같은 대상 중복 신고는 409."""
+class ReportCreateView(generics.ListCreateAPIView):
+    """내 신고 목록 / 신고 접수. 같은 대상 중복 신고는 409."""
 
     serializer_class = ReportSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = []
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Report.objects.none()
+        return Report.objects.filter(reporter=self.request.user).order_by("-created_at", "-id")
 
     def perform_create(self, serializer):
         d = serializer.validated_data

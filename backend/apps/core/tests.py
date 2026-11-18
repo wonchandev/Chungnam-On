@@ -30,6 +30,23 @@ class NotificationApiTest(TestCase):
 
 
 class ReportBlockTest(TestCase):
+    def test_report_list_is_private_and_status_cannot_be_written(self):
+        a, b = make_worker("report-a"), make_worker("report-b")
+        c = client_for(a)
+        mine = Report.objects.create(reporter=a, target_type="user", target_id=b.id, reason="abuse")
+        Report.objects.create(reporter=b, target_type="user", target_id=a.id)
+        data = c.get("/api/reports/").json()
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["results"][0]["id"], mine.id)
+        self.assertEqual(data["results"][0]["target_type_label"], "유저")
+        self.assertEqual(data["results"][0]["status_label"], "접수")
+        self.assertEqual(client_for().get("/api/reports/").status_code, 401)
+        response = c.post("/api/reports/", {"target_type": "room", "target_id": 1, "status": "resolved", "reporter": b.id}, format="json")
+        self.assertEqual(response.status_code, 201)
+        report = Report.objects.get(pk=response.json()["id"])
+        self.assertEqual(report.reporter_id, a.id)
+        self.assertEqual(report.status, "open")
+
     def test_report_dedup_and_admin_hide(self):
         boss, w = make_employer(), make_worker()
         job = make_job(boss.company)

@@ -21,9 +21,12 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class ReportSerializer(serializers.ModelSerializer):
+    target_type_label = serializers.CharField(source="get_target_type_display", read_only=True)
+    reason_label = serializers.CharField(source="get_reason_display", read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
     class Meta:
         model = Report
-        fields = ("id", "target_type", "target_id", "reason", "detail", "status", "created_at")
+        fields = ("id", "target_type", "target_type_label", "target_id", "reason", "reason_label", "detail", "status", "status_label", "created_at")
         read_only_fields = ("id", "status", "created_at")
 
 
