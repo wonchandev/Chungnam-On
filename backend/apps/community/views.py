@@ -12,7 +12,7 @@ from apps.core.services import blocked_user_ids, notify
 from .models import Comment, CompanionParticipant, CompanionPost, Post, PostLike
 from .serializers import (
     CommentCreateSerializer, CommentSerializer, CompanionSerializer, ParticipantSerializer,
-    PostDetailSerializer, PostListSerializer, PostWriteSerializer, author_lang,
+    PostDetailSerializer, PostListSerializer, PostWriteSerializer, CompanionWriteSerializer, author_lang,
 )
 
 PARSERS = [JSONParser, MultiPartParser, FormParser]
@@ -179,8 +179,12 @@ class CompanionListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(job_id=p["job"])
         return qs
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user, source_lang=author_lang(self.request.user))
+    @extend_schema(request=CompanionWriteSerializer, responses={201: CompanionSerializer})
+    def create(self, request, *args, **kwargs):
+        serializer = CompanionWriteSerializer(data=request.data, context=self.get_serializer_context())
+        serializer.is_valid(raise_exception=True)
+        post = serializer.save(author=request.user, source_lang=author_lang(request.user))
+        return Response(CompanionSerializer(post, context=self.get_serializer_context()).data, status=status.HTTP_201_CREATED)
 
 
 class CompanionDetailView(generics.RetrieveDestroyAPIView):
