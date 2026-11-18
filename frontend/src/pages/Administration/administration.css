@@ -1,0 +1,101 @@
+.admin-page { max-width: 760px; margin: 0 auto; padding: clamp(20px, 4vw, 36px); border: 1px solid var(--color-border); border-radius: 20px; background: #f9faf9; color: var(--color-text-brand); }
+.admin-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.admin-page-heading h1 { font-size: 23px; margin: 0; }
+.admin-page-heading > a, .admin-back, .admin-bell { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; border: 0; background: transparent; color: var(--color-text-brand); }
+.admin-back { cursor: pointer; }
+.admin-bell { position: relative; cursor: pointer; }
+.admin-bell > span { position: absolute; right: -2px; top: 0; min-width: 18px; padding: 2px 4px; border-radius: 10px; background: var(--color-brand-main); color: white; font-size: 10px; }
+.admin-tabs { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 30px; }
+.admin-tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 24px; padding: 10px 12px; background: #eef0ee; color: #414d49; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.admin-tabs button[aria-pressed="true"] { background: #9fb5ad; color: white; }
+.admin-hero { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 30px 24px; margin-bottom: 28px; min-height: 190px; border-radius: 20px; background: linear-gradient(125deg, #dce9e0 0%, #edf4ef 75%, #fff 100%); overflow: hidden; }
+.admin-hero h2 { font-size: 24px; line-height: 1.3; margin: 0 0 12px; color: #385b50; }
+.admin-hero p { font-size: 13px; line-height: 1.7; color: #648075; }
+.admin-hero-art { position: relative; flex-shrink: 0; display: grid; place-items: center; width: 130px; height: 136px; transform: rotate(10deg); border-radius: 30px; color: #668d76; background: linear-gradient(145deg, #ffffffcf, #c3d7c8); box-shadow: 5px 8px 0 #b9cfc155; }
+.admin-hero-art > span { position: absolute; bottom: -5px; right: -8px; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #345d4d; color: #e9f2e8; transform: rotate(-20deg); }
+.admin-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0 0 30px; }
+.admin-shortcuts button { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 22px 8px; min-height: 112px; border: 1px solid transparent; border-radius: 20px; background: #e6efe8; color: #315c4f; cursor: pointer; }
+.admin-shortcuts strong { font-size: 13px; }
+.admin-shortcuts button:hover { border-color: #b9cfbe; background: #ddeadd; }
+.admin-panel { padding: 22px; margin-bottom: 24px; border: 0; border-radius: 24px; background: white; }
+.admin-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #dfe6df; }
+.admin-section-heading h2 { margin: 0; font-size: 17px; }
+.admin-section-heading > span { font-size: 11px; color: var(--color-text-secondary); }
+.admin-text-button { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; border: 0; padding: 6px; background: transparent; color: #557c6c; font-size: 12px; cursor: pointer; }
+.admin-service-list, .admin-complaint-list, .admin-guide-list { display: grid; gap: 10px; }
+.admin-service-row, .admin-guide-row { display: flex; align-items: center; width: 100%; gap: 14px; padding: 14px; border: 0; border-radius: 16px; background: #edf4ee; text-align: left; color: #365d50; cursor: pointer; }
+.admin-guide-row { border: 1px solid #e2ebe3; background: white; }
+.admin-service-row:hover, .admin-guide-row:hover { background: #e5efe5; }
+.admin-row-icon { display: grid; place-items: center; flex-shrink: 0; width: 30px; }
+.admin-row-content { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.admin-row-content strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.admin-row-content > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11px; line-height: 1.5; color: #7a8c82; }
+.admin-row-content > small:not(.admin-status) { font-size: 11px; color: #769784; }
+.admin-service-row > svg, .admin-guide-row > svg { flex-shrink: 0; }
+.admin-more { display: block; width: 100%; border: 0; background: white; color: #91a196; font-size: 11px; margin-top: 12px; padding: 8px; cursor: pointer; }
+.admin-dashboard-caption { font-size: 11px; text-align: center; color: #87978c; }
+.admin-primary, .admin-secondary { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 44px; padding: 12px 18px; border: 0; border-radius: 12px; text-decoration: none; font-weight: 600; cursor: pointer; }
+.admin-primary { background: var(--color-brand-main); color: white; }
+.admin-secondary { background: var(--color-brand-light); color: var(--color-brand-main); }
+.admin-small-button { min-height: 36px; font-size: 12px; padding: 8px 10px; }
+.admin-login-prompt { display: grid; justify-items: center; gap: 14px; padding: 20px 6px; text-align: center; font-size: 13px; }
+.admin-state { display: grid; justify-items: center; gap: 10px; padding: 24px 10px; text-align: center; font-size: 14px; color: #7b8d81; }
+.admin-state button { border: 1px solid #c6d5cc; border-radius: 10px; padding: 8px 12px; background: white; color: var(--color-brand-main); cursor: pointer; }
+.admin-guide-filters { display: grid; gap: 16px; margin-bottom: 22px; }
+.admin-search { display: flex; border: 1px solid #c6d5cc; border-radius: 12px; overflow: hidden; }
+.admin-search input { flex: 1; width: 0; min-width: 0; padding: 12px; border: 0; background: white; }
+.admin-search button { display: grid; place-items: center; width: 44px; flex-shrink: 0; border: 0; background: #edf4ee; color: var(--color-brand-main); cursor: pointer; }
+.admin-complaint-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+.admin-status { width: fit-content; padding: 3px 9px; border-radius: 20px; font-size: 10px; background: #e4ece6; color: #5c7a68; }
+.admin-status.is-in_progress { background: #dcece4; color: #386c52; }
+.admin-status.is-resolved { background: #dce6ef; color: #466981; }
+.admin-pagination { display: flex; justify-content: center; align-items: center; gap: 14px; padding-top: 20px; font-size: 12px; }
+.admin-pagination button { padding: 8px 12px; border: 1px solid #c6d5cc; border-radius: 8px; background: white; color: var(--color-brand-main); }
+.home-dialog.admin-dialog { width: min(680px, calc(100% - 32px)); padding: clamp(20px, 4vw, 30px); }
+.admin-dialog-content { margin-top: 16px; }
+.admin-guide-detail, .admin-complaint-detail { display: grid; gap: 18px; }
+.admin-guide-detail h3, .admin-complaint-detail h3 { font-size: 23px; margin: 0; color: var(--color-text-brand); line-height: 1.5; }
+.admin-category-tag { justify-self: start; border-radius: 20px; padding: 5px 12px; background: var(--color-brand-light); color: var(--color-brand-main); font-size: 12px; }
+.admin-guide-summary { padding: 16px; background: #f0f5ef; border-radius: 12px; font-size: 14px; }
+.admin-guide-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.9; }
+.admin-guide-updated { font-size: 11px; color: #8a988c; }
+.admin-footnote { font-size: 12px; color: #89948c; }
+.admin-info-note { padding: 14px; border-radius: 12px; background: #f0f5ef; color: #6f8474; font-size: 12px; line-height: 1.7; }
+.admin-complaint-form { display: grid; gap: 18px; }
+.admin-complaint-form fieldset { display: grid; gap: 18px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.admin-input-label { display: grid; gap: 9px; font-size: 14px; font-weight: 600; }
+.admin-input-label textarea { width: 100%; min-width: 0; resize: vertical; border: 1px solid #c6d5cc; border-radius: 12px; padding: 12px; font: inherit; }
+.admin-answer { display: grid; gap: 12px; background: #edf4ee; padding: 18px; border-radius: 14px; }
+.admin-answer h4 { margin: 0; color: var(--color-brand-main); }
+.admin-answer time { font-size: 11px; color: #7a8d7e; }
+.admin-error { padding: 12px; border-radius: 10px; color: #a53030; background: #fff3f3; font-size: 13px; }
+.admin-success { padding: 12px; margin-bottom: 20px; border-radius: 10px; color: #386c52; background: #e2efe4; font-size: 13px; }
+.admin-notification-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+.admin-notifications { display: grid; gap: 12px; margin-top: 16px; }
+.admin-notifications article { padding: 18px; border-radius: 14px; border: 1px solid #cbded0; background: #f1f7ef; }
+.admin-notifications article.is-read { border-color: #e5ebe5; background: white; }
+.admin-notifications article > div:first-child { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.admin-notifications h3 { margin: 0 0 7px; font-size: 15px; }
+.admin-notifications p { font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-notifications time { display: block; margin-top: 10px; font-size: 11px; color: #8a988c; }
+.admin-new-dot { width: 8px; height: 8px; border-radius: 50%; background: #72a98b; flex-shrink: 0; }
+.admin-notification-actions { display: flex; gap: 16px; margin-top: 8px; }
+.admin-page :is(button, a, input):focus-visible, .admin-dialog :is(button, a, input, textarea):focus-visible { outline: 2px solid var(--color-brand-main); outline-offset: 3px; }
+.admin-page button:disabled, .admin-dialog button:disabled { opacity: .5; cursor: wait; }
+@media (max-width: 600px) {
+  .admin-page { padding: 18px 14px; border-radius: 16px; }
+  .admin-page-heading h1 { font-size: 19px; }
+  .admin-tabs { gap: 7px; }
+  .admin-tabs button { padding: 8px 9px; font-size: 11px; min-height: 36px; }
+  .admin-hero { padding: 22px 16px; min-height: 170px; }
+  .admin-hero h2 { font-size: 20px; }
+  .admin-hero p { font-size: 11px; }
+  .admin-hero-art { width: 88px; height: 105px; }
+  .admin-hero-art > svg { width: 60px; }
+  .admin-hero-art > span { width: 38px; height: 38px; }
+  .admin-shortcuts { gap: 12px; }
+  .admin-shortcuts button { padding: 18px 5px; min-height: 100px; }
+  .admin-shortcuts strong { font-size: 11px; }
+  .admin-panel { padding: 18px 14px; border-radius: 22px; }
+  .admin-section-heading h2 { font-size: 15px; }
+}
