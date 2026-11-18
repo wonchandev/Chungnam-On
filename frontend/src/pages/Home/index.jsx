@@ -61,7 +61,7 @@ export default function HomePage() {
           onLogout={handleLogout}
         />
       )}
-      {detailId !== null && <DetailDialog id={detailId} session={session} onClose={() => setDetailId(null)} onRefresh={saveSession} />}
+      {detailId !== null && <DetailDialog id={detailId} session={session} onClose={() => setDetailId(null)} onRefresh={saveSession} onLogin={() => setLoginOpen(true)} />}
       {loginOpen && <LoginDialog onClose={() => setLoginOpen(false)} onLogin={handleLogin} />}
     </div>
   )

@@ -87,3 +87,25 @@
   .home-urgent-description, .home-company, .home-job-meta, .home-pay, .home-ticker-pay { font-size: 12px; }
   .home-job-card h3 { font-size: 15px; }
 }
+
+/* 공고 상세: 지원·문의·동행 */
+.home-detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+.home-detail-actions button, .home-apply-done .home-primary, .home-companion-form .home-primary { min-height: 48px; border-radius: 24px; font-weight: 700; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.home-detail-actions .home-primary, .home-apply-done .home-primary, .home-companion-form .home-primary { border: 0; background: var(--color-brand-main); color: white; }
+.home-detail-actions .home-secondary { border: 2px solid var(--color-brand-main); background: white; color: var(--color-brand-main); }
+.home-detail-actions button:disabled, .home-companion-form .home-primary:disabled { opacity: .55; cursor: not-allowed; }
+.home-apply-done { display: grid; gap: 8px; margin-top: 20px; padding: 16px; border-radius: 16px; background: var(--color-brand-light); text-align: center; }
+.home-apply-done p { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
+.home-companions { margin-top: 20px; padding: 16px; border-radius: 16px; background: var(--color-brand-light); }
+.home-companions-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.home-companions-head h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; color: var(--color-text-brand); }
+.home-companions-head button, .home-companion-list button { border: 1px solid var(--color-brand-main); border-radius: 16px; background: white; color: var(--color-brand-main); padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.home-companion-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.home-companion-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px; background: white; }
+.home-companion-list strong { display: block; font-size: 13px; }
+.home-companion-list small, .home-muted { color: var(--color-text-secondary); font-size: 12px; }
+.home-muted { margin: 12px 0 0; }
+.home-tag { padding: 3px 8px; border-radius: 10px; background: var(--color-brand-light); color: var(--color-text-brand); font-size: 11px; }
+.home-companion-form { display: grid; gap: 10px; margin-top: 12px; padding: 12px; border-radius: 12px; background: white; }
+.home-companion-form label { display: grid; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
+.home-companion-form input { padding: 9px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; }
