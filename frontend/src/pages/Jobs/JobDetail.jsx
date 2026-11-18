@@ -4,6 +4,7 @@ import { ChevronLeft, Star } from 'lucide-react'
 import { getSession } from '../../api/session.js'
 import { communicationRequest, errorMessage, items } from '../Communication/api.js'
 import ChatDialog from '../Communication/components/ChatDialog.jsx'
+import CompanionSection from './CompanionSection.jsx'
 import { payLabel, timeLabel } from './format.js'
 import './detail.css'
 
@@ -171,6 +172,7 @@ export default function JobDetail({ id }) {
             </>
           )}
 
+          <CompanionSection jobId={id} />
           {notice && <p role="alert" className="jd-notice">{notice}</p>}
 
           {!job.is_owner && (
