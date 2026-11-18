@@ -63,7 +63,7 @@ python manage.py runserver
 | 행정관리 | `GET /api/admin-info/dashboard/ guides/ guides/{id}/ frequent/ popular/` · `GET/POST /api/admin-info/complaints/` |
 | AI 지원 | `POST /api/assistant/chat/`(SSE 스트리밍 지원) · `GET /api/assistant/conversations/` · `GET .../conversations/{id}/export/`(txt 내보내기) · `POST /api/assistant/messages/{id}/feedback/`(👍/👎·신고) · `GET /api/assistant/documents/templates/` · `POST /api/assistant/documents/` |
 | 커뮤니티 | `GET/POST /api/community/posts/` · `.../posts/{id}/ like/ comments/` · `DELETE /api/community/comments/{id}/` · `GET/POST /api/community/companions/` · `.../companions/{id}/ join/ participants/` |
-| 알림·안전 | `GET /api/notifications/ unread-count/` · `POST /api/notifications/read-all/ {id}/read/` · `POST /api/reports/` · `GET /api/blocks/` · `POST/DELETE /api/blocks/{user_id}/` |
+| 알림·안전 | `GET /api/notifications/ unread-count/` · `POST /api/notifications/read-all/ {id}/read/` · `GET/POST /api/reports/`(내 신고 목록·신고 접수) · `GET /api/blocks/` · `POST/DELETE /api/blocks/{user_id}/` |
 
 공고 목록·지도·주변검색은 같은 필터를 씁니다:
 `q, region, category, bbox, pay_type, min_pay, max_pay, period(one_day|short|mid|long), weekday, work_date, urgent, beginner_ok, with_friend, lunch_provided, local_preferred, night_shift, ordering(created_at|pay_amount|deadline|start_date)`
