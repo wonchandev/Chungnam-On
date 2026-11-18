@@ -144,6 +144,17 @@ class CompanionSerializer(serializers.ModelSerializer):
         return obj.author_id == self.context["request"].user.id
 
 
+class CompanionWriteSerializer(serializers.ModelSerializer):
+    region = serializers.SlugRelatedField(
+        slug_field="code", queryset=Region.objects.filter(level="sigungu"), required=False, allow_null=True
+    )
+    capacity = serializers.IntegerField(min_value=1, max_value=32767, default=2)
+
+    class Meta:
+        model = CompanionPost
+        fields = ("title", "body", "job", "region", "meet_place", "meet_at", "capacity")
+
+
 class ParticipantSerializer(serializers.ModelSerializer):
     user = AuthorSerializer(read_only=True)
 

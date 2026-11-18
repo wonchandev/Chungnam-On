@@ -110,6 +110,14 @@ class CompanionTest(TestCase):
         r = cb.delete(f"/api/community/companions/{self.pid}/join/")  # 취소하면 다시 모집중
         self.assertEqual((r.json()["participant_count"], r.json()["status"]), (1, "open"))
 
+    def test_create_preserves_content_and_validates_capacity(self):
+        post = CompanionPost.objects.get(pk=self.pid)
+        self.assertEqual((post.title, post.body), ("같이 가요", "천안역에서 만나요"))
+        for payload in ({"body": "제목 없음"}, {"title": "  "}, {"title": "동행", "capacity": 0}):
+            response = self.ca.post("/api/community/companions/", payload, format="json")
+            self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(client_for().post("/api/community/companions/", {"title": "동행"}, format="json").status_code, 401)
+
     def test_list_filters_and_participants_privacy(self):
         c = client_for()
         self.assertEqual(c.get("/api/community/companions/", {"job": self.job.id}).json()["count"], 1)
