@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowRight, Camera, Headphones, Languages, Mic, MessageCircle } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import useHomeSession from '../Home/hooks/useHomeSession.js'
 import useHomeResource from '../Home/hooks/useHomeResource.js'
 import LoginDialog from '../Home/components/LoginDialog.jsx'
@@ -9,7 +9,6 @@ import RecentChats from './components/RecentChats.jsx'
 import TranslationDialog from './components/TranslationDialog.jsx'
 import PhrasesDialog from './components/PhrasesDialog.jsx'
 import LiveVoiceDialog from './components/LiveVoiceDialog.jsx'
-import ChatDialog from './components/ChatDialog.jsx'
 import Community from './components/Community.jsx'
 import SegmentedControl from './components/SegmentedControl.jsx'
 import { communicationRequest } from './api.js'
@@ -20,8 +19,6 @@ export default function CommunicationPage() {
   const [panel, setPanel] = useState(null)
   const [pending, setPending] = useState(null)
   const [loginOpen, setLoginOpen] = useState(false)
-  const location = useLocation()
-  const [chatRoom, setChatRoom] = useState(() => location.state?.roomId ? { id: location.state.roomId } : null) // 공고 상세의 문의·지원 후 바로 채팅 열기
   const [section, setSection] = useState('chats')
   const loadLanguages = useCallback(signal => communicationRequest('languages/', { signal }), [])
   const languages = useHomeResource(loadLanguages)
@@ -44,7 +41,6 @@ export default function CommunicationPage() {
       {section === 'community' ? <Community session={session} onLogin={() => { setPending(null); setLoginOpen(true) }} /> : session ? <RecentChats languages={languages.data || []} /> : <><div className="comm-section-heading"><h2>최근 대화</h2></div><div className="comm-login-card"><MessageCircle size={30} aria-hidden="true" /><strong>대화를 이어가려면 로그인해 주세요</strong><p>사업주와의 대화와 번역 내용을 한곳에서 확인하세요.</p><div><button className="comm-primary" onClick={() => { setPending(null); setLoginOpen(true) }}>로그인</button><Link to="/signup">회원가입</Link></div></div></>}
     </div>
     {['text', 'voice', 'image'].includes(panel) && <TranslationDialog mode={panel} tts={!!features.tts} languages={languages.data || []} onClose={() => setPanel(null)} />}
-    {chatRoom && session && <ChatDialog initialRoom={chatRoom} languages={languages.data || []} onClose={() => { setChatRoom(null); window.history.replaceState({}, '') }} />}
     {panel === 'phrases' && <PhrasesDialog languages={languages.data || []} onClose={() => setPanel(null)} />}
     {panel === 'live' && <LiveVoiceDialog languages={languages.data || []} onClose={() => setPanel(null)} />}
     {loginOpen && <LoginDialog message="번역·교육 신청·대화·커뮤니티 활동을 이용하려면 로그인해 주세요." onClose={() => { setLoginOpen(false); setPending(null) }} onLogin={tokens => { login(tokens); setLoginOpen(false); if (pending) setPanel(pending); setPending(null) }} />}
