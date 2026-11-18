@@ -1,27 +1,36 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import { apiGet } from '../../api/client.js'
+import { apiRequest } from '../../api/client.js'
+import { getSession, saveSession } from '../../api/session.js'
 import { payLabel, timeLabel } from './format.js'
 
-export default function JobList({ category, q }) {
+export default function JobList({ category, q, recommended }) {
   const navigate = useNavigate()
   const [state, setState] = useState({ loading: true, error: '', jobs: [], count: 0 })
 
   useEffect(() => {
     const controller = new AbortController()
     setState((s) => ({ ...s, loading: true, error: '' }))
-    apiGet('jobs/', { signal: controller.signal, query: { category, q } })
-      .then((data) =>
-        setState({ loading: false, error: '', jobs: data.results, count: data.count }),
-      )
+    const session = getSession()
+    apiRequest(recommended ? 'jobs/recommended/' : 'jobs/', {
+      signal: controller.signal,
+      query: { category, q },
+      accessToken: session?.access,
+      refreshToken: session?.refresh,
+      onRefresh: saveSession,
+    })
+      .then((data) => {
+        const jobs = Array.isArray(data) ? data : data.results
+        setState({ loading: false, error: '', jobs, count: data.count ?? jobs.length })
+      })
       .catch((e) => {
         if (e.name !== 'AbortError') {
           setState((s) => ({ ...s, loading: false, error: e.message }))
         }
       })
     return () => controller.abort()
-  }, [category, q])
+  }, [category, q, recommended])
 
   return (
     <div className="jl-page">
