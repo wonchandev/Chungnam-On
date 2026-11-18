@@ -39,6 +39,17 @@ const PERIOD_OPTIONS = [
   { code: 'mid', label: '중기' },
   { code: 'long', label: '장기' },
 ]
+
+const WEEKDAY_OPTIONS = [
+  { code: '0', label: '월요일' },
+  { code: '1', label: '화요일' },
+  { code: '2', label: '수요일' },
+  { code: '3', label: '목요일' },
+  { code: '4', label: '금요일' },
+  { code: '5', label: '토요일' },
+  { code: '6', label: '일요일' },
+]
+
 const manwon = (n) => `${Math.round(n / 1000) / 10}만`
 
 export default function NearbyJobsPage() {
@@ -51,7 +62,10 @@ export default function NearbyJobsPage() {
   const [urgent, setUrgent] = useState(false)
   const [category, setCategory] = useState('')
   const [period, setPeriod] = useState('')
+  const [weekday, setWeekday] = useState('')
   const [tags, setTags] = useState([])
+  const [regionQ, setRegionQ] = useState('')
+  const [regions, setRegions] = useState([])
   const [data, setData] = useState(null)
   const [showList, setShowList] = useState(false)
   const [list, setList] = useState({ jobs: [], count: 0 })
@@ -62,11 +76,12 @@ export default function NearbyJobsPage() {
       urgent: urgent || undefined,
       category,
       period: period || undefined,
+      weekday: weekday || undefined,
       ...Object.fromEntries(tags.map((t) => [t, true])),
     }),
-    [urgent, category, period, tags],
+    [urgent, category, period, weekday, tags],
   )
-  
+
   // 지도 만들기 (한 번만)
   useEffect(() => {
     const map = L.map(elRef.current, { zoomControl: false }).setView(CENTER, 9)
@@ -153,6 +168,25 @@ export default function NearbyJobsPage() {
     })
   }, [data, navigate])
 
+  // 지역 검색 자동완성
+  useEffect(() => {
+    const keyword = regionQ.trim()
+    if (!keyword) {
+      setRegions([])
+      return undefined
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      apiGet('regions/search/', { signal: controller.signal, query: { q: keyword } })
+        .then((res) => setRegions(Array.isArray(res) ? res : res.results))
+        .catch(() => {})
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [regionQ])
+
   // 목록 보기
   useEffect(() => {
     if (!showList || !view) return undefined
@@ -165,6 +199,12 @@ export default function NearbyJobsPage() {
       })
     return () => controller.abort()
   }, [showList, view, filterQuery])
+
+  const pickRegion = (region) => {
+    mapRef.current?.setView([region.lat, region.lng], 11)
+    setRegionQ('')
+    setRegions([])
+  }
 
   const toggleQuick = (q) => {
     if (q.urgent) setUrgent((v) => !v)
@@ -188,16 +228,38 @@ export default function NearbyJobsPage() {
       <div className="nm-mapbox">
         <div ref={elRef} className="nm-map" />
         <div className="nm-top">
-          {QUICK.map((q) => (
-            <button
-              key={q.label}
-              type="button"
-              className={`nm-chip${quickOn(q) ? ' on' : ''}`}
-              onClick={() => toggleQuick(q)}
-            >
-              {q.label}
-            </button>
-          ))}
+          <div className="nm-search">
+            <input
+              type="text"
+              placeholder="지역 검색"
+              aria-label="지역 검색"
+              value={regionQ}
+              onChange={(e) => setRegionQ(e.target.value)}
+            />
+            {regions.length > 0 && (
+              <ul className="nm-suggest">
+                {regions.map((r) => (
+                  <li key={r.id}>
+                    <button type="button" onClick={() => pickRegion(r)}>
+                      {r.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="nm-chips">
+            {QUICK.map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                className={`nm-chip${quickOn(q) ? ' on' : ''}`}
+                onClick={() => toggleQuick(q)}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
         </div>
         <button type="button" className="nm-locate" onClick={locate}>
           내 위치
@@ -205,6 +267,48 @@ export default function NearbyJobsPage() {
         <button type="button" className="nm-list-btn" onClick={() => setShowList((v) => !v)}>
           {showList ? '지도만 보기' : '목록보기'}
         </button>
+      </div>
+
+      <div className="nm-selects">
+        <select
+          className="nm-select"
+          aria-label="하는 일"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="">하는 일</option>
+          {CATEGORY_OPTIONS.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="nm-select"
+          aria-label="일하는 기간"
+          value={period}
+          onChange={(e) => setPeriod(e.target.value)}
+        >
+          <option value="">일하는 기간</option>
+          {PERIOD_OPTIONS.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="nm-select"
+          aria-label="일하는 요일"
+          value={weekday}
+          onChange={(e) => setWeekday(e.target.value)}
+        >
+          <option value="">일하는 요일</option>
+          {WEEKDAY_OPTIONS.map((d) => (
+            <option key={d.code} value={d.code}>
+              {d.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="nm-tags">
