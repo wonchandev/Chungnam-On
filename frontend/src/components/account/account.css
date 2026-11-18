@@ -2,7 +2,6 @@
 .header-auth .account-trigger { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border-radius: 50%; border: 1px solid #c6d5cc; background: var(--color-brand-light); color: var(--color-brand-main); }
 .header-auth .account-trigger:hover, .header-auth .account-trigger[aria-expanded="true"] { background: #d7e6d8; }
 .account-options { position: absolute; z-index: 30; right: 0; top: calc(100% + 10px); min-width: 172px; padding: 6px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 8px 24px #23564d24; }
-.header-auth .account-options button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; text-align: left; border-radius: 8px; min-height: 44px; }
-.header-auth .account-options button:hover { background: var(--color-brand-light); }
+.header-auth .account-options :is(button, a) { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; text-align: left; border-radius: 8px; min-height: 44px; font-size: 14px; font-weight: 500; text-decoration: none; background: white; color: var(--color-brand-main); }
+.header-auth .account-options :is(button, a):hover { background: var(--color-brand-light); }
 .account-menu button:focus-visible { outline: 2px solid var(--color-brand-main); outline-offset: 2px; }
-.account-profile { border: 0; padding: 0; }
