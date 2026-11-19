@@ -1,3 +1,350 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { apiGet } from '../../api/client.js'
+import { payLabel, timeLabel } from '../Jobs/format.js'
+import './nearby.css'
+
+const CENTER = [36.65, 126.85]
+const CLUSTER_MAX_ZOOM = 11
+
+const QUICK = [
+  { label: '1일 급구', urgent: true },
+  { label: '매장관리 및 판매', category: 'retail' },
+  { label: '생산, 건설, 노무', category: 'construction' },
+]
+
+const TAGS = [
+  { key: 'beginner_ok', label: '초보가능' },
+  { key: 'with_friend', label: '친구와 함께' },
+  { key: 'lunch_provided', label: '점심 제공' },
+  { key: 'local_preferred', label: '인근지역우대' },
+  { key: 'night_shift', label: '야간근무' },
+]
+
+const CATEGORY_OPTIONS = [
+  { code: 'manufacturing', label: '제조·생산' },
+  { code: 'construction', label: '건설현장' },
+  { code: 'agriculture', label: '농업·축산' },
+  { code: 'logistics', label: '물류·배송' },
+  { code: 'retail', label: '매장관리 및 판매' },
+  { code: 'safety', label: '안전·경비' },
+  { code: 'food', label: '음식·서비스' },
+]
+
+const PERIOD_OPTIONS = [
+  { code: 'one_day', label: '1일' },
+  { code: 'short', label: '단기' },
+  { code: 'mid', label: '중기' },
+  { code: 'long', label: '장기' },
+]
+
+const WEEKDAY_OPTIONS = [
+  { code: '0', label: '월요일' },
+  { code: '1', label: '화요일' },
+  { code: '2', label: '수요일' },
+  { code: '3', label: '목요일' },
+  { code: '4', label: '금요일' },
+  { code: '5', label: '토요일' },
+  { code: '6', label: '일요일' },
+]
+
+const manwon = (n) => `${Math.round(n / 1000) / 10}만`
+
 export default function NearbyJobsPage() {
-  return <section><h1>내 주변 일자리</h1><p>주변 일자리 탐색 서비스를 준비하고 있습니다.</p></section>
+  const navigate = useNavigate()
+  const elRef = useRef(null)
+  const mapRef = useRef(null)
+  const layerRef = useRef(null)
+
+  const [view, setView] = useState(null)
+  const [urgent, setUrgent] = useState(false)
+  const [category, setCategory] = useState('')
+  const [period, setPeriod] = useState('')
+  const [weekday, setWeekday] = useState('')
+  const [tags, setTags] = useState([])
+  const [regionQ, setRegionQ] = useState('')
+  const [regions, setRegions] = useState([])
+  const [data, setData] = useState(null)
+  const [showList, setShowList] = useState(false)
+  const [list, setList] = useState({ jobs: [], count: 0 })
+  const [error, setError] = useState('')
+
+  const filterQuery = useMemo(
+    () => ({
+      urgent: urgent || undefined,
+      category,
+      period: period || undefined,
+      weekday: weekday || undefined,
+      ...Object.fromEntries(tags.map((t) => [t, true])),
+    }),
+    [urgent, category, period, weekday, tags],
+  )
+
+  // 지도 만들기 (한 번만)
+  useEffect(() => {
+    const map = L.map(elRef.current, { zoomControl: false }).setView(CENTER, 9)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map)
+    layerRef.current = L.layerGroup().addTo(map)
+    mapRef.current = map
+
+    const sync = () => {
+      const b = map.getBounds()
+      setView({
+        zoom: map.getZoom(),
+        sw_lat: b.getSouth(),
+        sw_lng: b.getWest(),
+        ne_lat: b.getNorth(),
+        ne_lng: b.getEast(),
+      })
+    }
+    map.on('moveend', sync)
+    map.whenReady(sync)
+
+    return () => {
+      map.remove()
+      mapRef.current = null
+      layerRef.current = null
+    }
+  }, [])
+
+  // 지도 영역·필터가 바뀔 때 클러스터/마커 불러오기
+  useEffect(() => {
+    if (!view) return undefined
+    const controller = new AbortController()
+    const kind = view.zoom < CLUSTER_MAX_ZOOM ? 'clusters' : 'markers'
+    const bbox = `${view.sw_lat},${view.sw_lng},${view.ne_lat},${view.ne_lng}`
+    apiGet(kind === 'clusters' ? 'jobs/map/clusters/' : 'jobs/map/', {
+      signal: controller.signal,
+      query: { ...view, bbox, ...filterQuery },
+    })
+      .then((res) => {
+        setError('')
+        setData({
+          kind,
+          items: kind === 'clusters' ? res.clusters : res.results,
+        })
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') setError(e.message)
+      })
+    return () => controller.abort()
+  }, [view, filterQuery])
+
+  // 지도에 그리기
+  useEffect(() => {
+    const layer = layerRef.current
+    const map = mapRef.current
+    if (!layer || !map || !data) return
+    layer.clearLayers()
+    data.items.forEach((item) => {
+      if (data.kind === 'clusters') {
+        const size = Math.min(48 + item.count * 3, 96)
+        L.marker([item.lat, item.lng], {
+          icon: L.divIcon({
+            className: 'nm-wrap',
+            html: `<div class="nm-cluster" style="width:${size}px;height:${size}px">${item.count}</div>`,
+            iconSize: [size, size],
+          }),
+        })
+          .on('click', () => map.setView([item.lat, item.lng], map.getZoom() + 2))
+          .addTo(layer)
+      } else {
+        L.marker([item.lat, item.lng], {
+          icon: L.divIcon({
+            className: 'nm-wrap',
+            html: `<div class="nm-pin${item.is_urgent ? ' urgent' : ''}">${manwon(item.pay_amount)}</div>`,
+            iconSize: [60, 36],
+            iconAnchor: [30, 36],
+          }),
+        })
+          .on('click', () => navigate(`/jobs?id=${item.id}`))
+          .addTo(layer)
+      }
+    })
+  }, [data, navigate])
+
+  // 지역 검색 자동완성
+  useEffect(() => {
+    const keyword = regionQ.trim()
+    if (!keyword) {
+      setRegions([])
+      return undefined
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      apiGet('regions/search/', { signal: controller.signal, query: { q: keyword } })
+        .then((res) => setRegions(Array.isArray(res) ? res : res.results))
+        .catch(() => {})
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [regionQ])
+
+  // 목록 보기
+  useEffect(() => {
+    if (!showList || !view) return undefined
+    const controller = new AbortController()
+    const bbox = `${view.sw_lat},${view.sw_lng},${view.ne_lat},${view.ne_lng}`
+    apiGet('jobs/', { signal: controller.signal, query: { bbox, ...filterQuery } })
+      .then((res) => setList({ jobs: res.results, count: res.count }))
+      .catch((e) => {
+        if (e.name !== 'AbortError') setError(e.message)
+      })
+    return () => controller.abort()
+  }, [showList, view, filterQuery])
+
+  const pickRegion = (region) => {
+    mapRef.current?.setView([region.lat, region.lng], 11)
+    setRegionQ('')
+    setRegions([])
+  }
+
+  const toggleQuick = (q) => {
+    if (q.urgent) setUrgent((v) => !v)
+    else setCategory((c) => (c === q.category ? '' : q.category))
+  }
+
+  const toggleTag = (key) =>
+    setTags((prev) => (prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]))
+
+  const locate = () => {
+    navigator.geolocation?.getCurrentPosition(
+      (p) => mapRef.current?.setView([p.coords.latitude, p.coords.longitude], 12),
+      () => setError('위치 권한을 허용해 주세요.'),
+    )
+  }
+
+  const quickOn = (q) => (q.urgent ? urgent : category === q.category)
+
+  return (
+    <div className="nm-page">
+      <div className="nm-mapbox">
+        <div ref={elRef} className="nm-map" />
+        <div className="nm-top">
+          <div className="nm-search">
+            <input
+              type="text"
+              placeholder="지역 검색"
+              aria-label="지역 검색"
+              value={regionQ}
+              onChange={(e) => setRegionQ(e.target.value)}
+            />
+            {regions.length > 0 && (
+              <ul className="nm-suggest">
+                {regions.map((r) => (
+                  <li key={r.id}>
+                    <button type="button" onClick={() => pickRegion(r)}>
+                      {r.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="nm-chips">
+            {QUICK.map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                className={`nm-chip${quickOn(q) ? ' on' : ''}`}
+                onClick={() => toggleQuick(q)}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button type="button" className="nm-locate" onClick={locate}>
+          내 위치
+        </button>
+        <button type="button" className="nm-list-btn" onClick={() => setShowList((v) => !v)}>
+          {showList ? '지도만 보기' : '목록보기'}
+        </button>
+      </div>
+
+      <div className="nm-selects">
+        <select
+          className="nm-select"
+          aria-label="하는 일"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="">하는 일</option>
+          {CATEGORY_OPTIONS.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="nm-select"
+          aria-label="일하는 기간"
+          value={period}
+          onChange={(e) => setPeriod(e.target.value)}
+        >
+          <option value="">일하는 기간</option>
+          {PERIOD_OPTIONS.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="nm-select"
+          aria-label="일하는 요일"
+          value={weekday}
+          onChange={(e) => setWeekday(e.target.value)}
+        >
+          <option value="">일하는 요일</option>
+          {WEEKDAY_OPTIONS.map((d) => (
+            <option key={d.code} value={d.code}>
+              {d.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="nm-tags">
+        {TAGS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`nm-tag${tags.includes(t.key) ? ' on' : ''}`}
+            onClick={() => toggleTag(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {error && <p role="alert">{error}</p>}
+
+      {showList && (
+        <>
+          <p className="nm-total">총 {list.count}건</p>
+          <ul className="nm-list">
+            {list.jobs.map((job) => (
+              <li key={job.id}>
+                <Link to={`/jobs?id=${job.id}`} className="nm-card">
+                  <span className="nm-company">{job.company_name}</span>
+                  <strong className="nm-title">{job.title}</strong>
+                  <span className="nm-info">
+                    {job.region.name} · {timeLabel(job)}
+                  </span>
+                  <span className="nm-pay">{payLabel(job)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  )
 }
