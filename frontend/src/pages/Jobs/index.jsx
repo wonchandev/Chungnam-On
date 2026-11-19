@@ -13,13 +13,14 @@ import {
 } from 'lucide-react'
 import JobList from './JobList.jsx'
 import JobDetail from './JobDetail.jsx'
+import AgencyList from './AgencyList.jsx'
 import './jobs.css'
 
 const QUICK_MENUS = [
   { label: '일자리 찾기', icon: Search, list: true },
-  { label: '내 구직활동', icon: User },
-  { label: '인력사무소', icon: Building2 },
-  { label: '관심 공고', icon: Crown },
+  { label: '내 구직활동', icon: User, mine: 'applications' },
+  { label: '인력사무소', icon: Building2, agency: true },
+  { label: '관심 공고', icon: Crown, mine: 'bookmarks' },
 ]
 
 const POPULAR_CATEGORIES = [
@@ -38,6 +39,9 @@ export default function JobsPage() {
   const q = params.get('q')
 
   if (id) return <JobDetail id={id} />
+  if (params.has('agency')) return <AgencyList />
+  if (params.has('mine')) return <MyLists kind={params.get('mine')} />
+  if (params.has('recommended')) return <JobList recommended />
   if (category || q || params.has('list')) return <JobList category={category} q={q} />
 
   const search = (e) => {
@@ -67,12 +71,20 @@ export default function JobsPage() {
       </form>
 
       <div className="jobs-quick">
-        {QUICK_MENUS.map(({ label, icon: Icon, list }) => (
+        {QUICK_MENUS.map(({ label, icon: Icon, list, agency, mine }) => (
           <button
             key={label}
             type="button"
             className="jobs-quick-item"
-            onClick={list ? () => setParams({ list: '1' }) : undefined}
+            onClick={
+              list
+                ? () => setParams({ list: '1' })
+                : agency
+                  ? () => setParams({ agency: '1' })
+                  : mine
+                    ? () => setParams({ mine })
+                    : undefined
+            }
           >
             <Icon size={22} aria-hidden="true" />
             <span>{label}</span>
@@ -80,7 +92,11 @@ export default function JobsPage() {
         ))}
       </div>
 
-      <button type="button" className="jobs-ai">
+      <button
+        type="button"
+        className="jobs-ai"
+        onClick={() => setParams({ recommended: '1' })}
+      >
         <span className="jobs-ai-text">
           <span className="jobs-ai-badge">AI 추천</span>
           <strong>
@@ -109,3 +125,4 @@ export default function JobsPage() {
     </div>
   )
 }
+import MyLists from './MyLists.jsx'
