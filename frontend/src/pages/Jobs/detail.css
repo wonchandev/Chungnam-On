@@ -1,0 +1,98 @@
+.jd-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jd-star {
+  border: 0;
+  background: transparent;
+  color: var(--color-popup);
+  cursor: pointer;
+}
+
+.jd-star.on {
+  color: var(--color-brand-sub);
+}
+
+.jd-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.jd-btn {
+  flex: 1;
+  height: 48px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--color-brand-main);
+  color: var(--color-surface);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jd-btn.ghost {
+  border: 1.5px solid var(--color-brand-main);
+  background: var(--color-surface);
+  color: var(--color-brand-main);
+}
+
+.jd-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.jd-notice {
+  margin-top: 16px;
+  color: var(--color-warning);
+}
+.cp-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--color-brand-light);
+}
+
+.cp-title {
+  color: var(--color-brand-main);
+  font-size: 15px;
+}
+
+.cp-info {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.cp-btn {
+  align-self: flex-start;
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--color-brand-main);
+  color: var(--color-surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cp-btn.ghost {
+  border: 1.5px solid var(--color-brand-main);
+  background: var(--color-surface);
+  color: var(--color-brand-main);
+}
+
+.cp-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
