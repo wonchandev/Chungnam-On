@@ -4,11 +4,13 @@ from rest_framework import generics, permissions, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.exceptions import ServiceError
 
+from .models import User
 from .serializers import LogoutSerializer, PasswordChangeSerializer, RegisterSerializer, UserSerializer
 
 
@@ -83,3 +85,13 @@ class MeSummaryView(APIView):
             apps_ = Application.objects.filter(applicant=u)
             data["applications"] = {s: apps_.filter(status=s).count() for s in ("pending", "approved", "rejected")}
         return Response(data)
+
+
+class SafeTokenRefreshView(TokenRefreshView):
+    """삭제·초기화된 사용자의 refresh 토큰이 오면 500 대신 401 을 반환 (프론트가 토큰을 버리고 재로그인하도록)"""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except User.DoesNotExist:
+            raise InvalidToken("사용자를 찾을 수 없습니다. 다시 로그인해 주세요.")
