@@ -202,6 +202,19 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
+# --- 배포 (Railway 등): 프론트 빌드 결과를 Django 가 함께 서빙하는 단일 서비스 구성 ---
+RAILWAY_DOMAIN = env("RAILWAY_PUBLIC_DOMAIN", default="")
+if RAILWAY_DOMAIN:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, RAILWAY_DOMAIN]
+    CSRF_TRUSTED_ORIGINS = [f"https://{RAILWAY_DOMAIN}"]
+if env.bool("BEHIND_PROXY", default=bool(RAILWAY_DOMAIN)):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+FRONTEND_DIST = BASE_DIR / "frontend_dist"
+if (FRONTEND_DIST / "index.html").exists():
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+    WHITENOISE_ROOT = FRONTEND_DIST
+    WHITENOISE_INDEX_FILE = True
+
 if "test" in sys.argv:  # 테스트는 .env 의 실제 키와 무관하게 외부 호출 없이 실행 (키가 필요한 테스트는 override_settings 사용)
     TRANSLATION_BACKEND = "apps.translation.backends.EchoTranslator"
     OPENAI_API_KEY = GOOGLE_TRANSLATE_API_KEY = GOOGLE_TTS_API_KEY = ANTHROPIC_API_KEY = ""

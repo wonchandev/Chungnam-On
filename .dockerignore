@@ -1,0 +1,12 @@
+.git
+.github
+slides
+**/node_modules
+frontend/dist
+backend/.env
+backend/db.sqlite3
+backend/media
+backend/staticfiles
+backend/frontend_dist
+**/.venv
+**/__pycache__
