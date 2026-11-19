@@ -1,6 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from apps.accounts.models import User
 from apps.core.testing import PW, client_for, make_employer, make_worker
 
 
@@ -78,3 +79,14 @@ class RegionTest(TestCase):
         res = APIClient().get("/api/regions/search/", {"q": "천안"})
         self.assertEqual(res.json()[0]["code"], "44130")
         self.assertEqual(APIClient().get("/api/regions/search/", {"q": ""}).json(), [])
+
+
+class RefreshUnknownUserTests(TestCase):
+    def test_refresh_for_deleted_user_returns_401(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        u = User.objects.create_user(username="ghost", password="pw12345!x")
+        token = str(RefreshToken.for_user(u))
+        u.delete()
+        r = self.client.post("/api/auth/refresh/", {"refresh": token}, content_type="application/json")
+        self.assertEqual(r.status_code, 401)
