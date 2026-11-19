@@ -1,0 +1,16 @@
+.form-select { display: grid; gap: 8px; }
+.form-select label { font-weight: 600; color: var(--color-text-brand); }
+.form-select-control { position: relative; min-width: 0; }
+.form-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid #c6d5cc; border-radius: 12px; background: var(--color-surface); color: var(--color-text-brand); font: inherit; text-align: left; cursor: pointer; }
+.form-select-trigger svg { flex-shrink: 0; transition: transform .15s; }
+.form-select-trigger svg.is-open { transform: rotate(180deg); }
+.form-select-trigger:hover, .form-select-trigger[aria-expanded="true"] { border-color: var(--color-brand-sub); }
+.form-select-trigger:focus-visible { outline: 2px solid var(--color-brand-main); outline-offset: 2px; box-shadow: 0 0 0 4px var(--color-brand-light); }
+.form-select-trigger:disabled { background: var(--color-brand-light); color: var(--color-text-secondary); cursor: wait; }
+.form-select-trigger[aria-invalid="true"] { border-color: #ad2727; }
+.form-select-options { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; right: 0; max-height: 264px; overflow-y: auto; overscroll-behavior: contain; margin: 0; padding: 6px; list-style: none; border: 1px solid #c6d5cc; border-radius: 12px; background: var(--color-surface); box-shadow: 0 8px 24px #23564d24; scrollbar-width: thin; scrollbar-color: var(--color-brand-sub) var(--color-brand-light); }
+.form-select-options li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 12px; border-radius: 8px; color: var(--color-text-brand); cursor: pointer; }
+.form-select-options li[aria-selected="true"] { color: var(--color-brand-main); font-weight: 700; background: #f1f6f0; }
+.form-select-options li[data-active="true"] { background: var(--color-brand-light); }
+.form-select-options li svg { flex-shrink: 0; }
+.form-select-error { color: #ad2727; font-size: 14px; }

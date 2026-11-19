@@ -1,0 +1,64 @@
+from django.conf import settings
+from rest_framework import serializers
+
+from .google import MAX_TTS_BYTES, TTS_LANG
+
+LANGUAGE_CHOICES = [(l, l) for l in settings.SUPPORTED_LANGUAGES]
+SOURCE_LANGUAGE_CHOICES = LANGUAGE_CHOICES + [("auto", "auto")]
+
+
+class TranslateRequestSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=5000)
+    source = serializers.ChoiceField(choices=SOURCE_LANGUAGE_CHOICES, default="ko", help_text="auto: 자동 감지")
+    target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
+
+
+class TranslateResponseSerializer(serializers.Serializer):
+    text = serializers.CharField()
+    source = serializers.CharField()
+    target = serializers.CharField()
+    translated_text = serializers.CharField()
+
+
+from .models import CourseEnrollment, LanguageCourse  # noqa: E402
+
+
+class VoiceTranslateSerializer(serializers.Serializer):
+    audio = serializers.FileField(help_text="녹음 파일 (webm/ogg/m4a/mp3/wav 등, 기본 5분·25MB 이하)")
+    source = serializers.ChoiceField(choices=LANGUAGE_CHOICES, help_text="말하는 언어")
+    target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
+    encoding = serializers.ChoiceField(choices=["WEBM_OPUS", "OGG_OPUS", "LINEAR16", "FLAC", "MP3"], default="WEBM_OPUS",
+                                       help_text="서버 변환이 불가능할 때만 사용 (보통은 생략)")
+
+
+class TextToSpeechSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=MAX_TTS_BYTES, help_text="재생할 번역문 (UTF-8 5,000바이트 이하)")
+    language = serializers.ChoiceField(choices=list(TTS_LANG), help_text="번역문 언어")
+
+    def validate_text(self, value: str) -> str:
+        if len(value.encode("utf-8")) > MAX_TTS_BYTES:
+            raise serializers.ValidationError("UTF-8 기준 5,000바이트 이하의 문장을 입력해주세요.")
+        return value
+
+
+class ImageTranslateSerializer(serializers.Serializer):
+    image = serializers.ImageField(help_text="번역할 글자가 있는 사진")
+    source = serializers.ChoiceField(choices=SOURCE_LANGUAGE_CHOICES, default="auto", help_text="auto: 자동 감지")
+    target = serializers.ChoiceField(choices=LANGUAGE_CHOICES)
+
+
+class CourseSerializer(serializers.ModelSerializer):
+    enrolled_count = serializers.SerializerMethodField()
+    is_enrolled = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LanguageCourse
+        fields = ("id", "title", "description", "taught_language", "kind", "is_free", "capacity",
+                  "enrolled_count", "is_enrolled")
+
+    def get_enrolled_count(self, obj) -> int:
+        return len(obj.enrollments.all())
+
+    def get_is_enrolled(self, obj) -> bool:
+        uid = self.context["request"].user.id
+        return any(e.user_id == uid for e in obj.enrollments.all())
