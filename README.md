@@ -104,3 +104,14 @@ PR에는 다음 내용을 포함합니다.
 - 구현 결과 또는 화면 캡처
 - 테스트 결과
 - 관련 Issue 번호
+
+## 배포 (Railway)
+
+프론트 빌드와 Django(ASGI/WebSocket)를 한 서비스로 실행합니다. 루트의 `Dockerfile`·`railway.json`을 Railway가 자동 인식합니다.
+
+1. Railway → New Project → Deploy from GitHub repo → 이 저장소(`main`) 선택
+2. Variables 에 `SECRET_KEY`(임의의 긴 문자열), `OPENAI_API_KEY`(선택), `TRANSLATION_BACKEND=apps.translation.backends.MyMemoryTranslator`(선택) 입력
+3. Settings → Networking → Generate Domain
+4. (선택) 데이터 유지: Volume 을 `/data` 에 연결하고 `DATABASE_URL=sqlite:////data/db.sqlite3` 설정. 없으면 재배포 때 DB가 초기화되고 데모 데이터가 다시 생성됩니다.
+
+시작 시 `migrate` → `seed_demo`(데모 계정 worker1/boss1~3, 비밀번호 `demo1234!`) → `index_guides`(OpenAI 키가 있을 때) 순서로 실행됩니다.
