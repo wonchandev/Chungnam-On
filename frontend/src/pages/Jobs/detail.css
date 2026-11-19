@@ -96,3 +96,9 @@
   opacity: 0.6;
   cursor: default;
 }
+.cp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cp-head .jd-heading { margin: 0; }
+.cp-new { width: auto; padding: 6px 12px; font-size: 12px; }
+.cp-form { display: grid; gap: 10px; margin: 12px 0; padding: 14px; border-radius: 14px; background: var(--color-brand-light); }
+.cp-form label { display: grid; gap: 4px; font-size: 12px; color: var(--color-text-secondary); }
+.cp-form input { padding: 9px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 14px; background: white; }
