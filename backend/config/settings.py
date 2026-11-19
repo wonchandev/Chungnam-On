@@ -209,6 +209,10 @@ if RAILWAY_DOMAIN:
     CSRF_TRUSTED_ORIGINS = [f"https://{RAILWAY_DOMAIN}"]
 if env.bool("BEHIND_PROXY", default=bool(RAILWAY_DOMAIN)):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# OpenStreetMap 타일 서버는 Referer 가 없으면 차단(403)하므로 외부 요청에도 출처(origin)를 보낸다
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+# Railway 도메인은 환경변수 없이도 허용 (도메인 생성 시점과 배포 시점이 어긋나는 경우 대비)
+ALLOWED_HOSTS = [*ALLOWED_HOSTS, ".up.railway.app"]
 FRONTEND_DIST = BASE_DIR / "frontend_dist"
 if (FRONTEND_DIST / "index.html").exists():
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
